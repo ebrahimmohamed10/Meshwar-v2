@@ -21,6 +21,8 @@ import { useAppContext } from './context/AppContext'
 import AdminDashboard from './pages/AdminDashboard'
 import ManageUsers from './pages/ManageUsers' 
 
+import AdminLayout from './pages/AdminLayout'
+
 const App = () => {
 
   const {showLogin} = useAppContext()
@@ -55,8 +57,10 @@ const App = () => {
         <Route path="manage-bookings" element={<ManageBookings />}/>
       </Route>
 
-      <Route path='/admin' element={<AdminDashboard />}/>
-      <Route path='/admin/users' element={<ManageUsers />}/>
+      <Route path='/admin' element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />}/>
+        <Route path="users" element={<ManageUsers />}/>
+      </Route>
     </Routes>
     </div>
 

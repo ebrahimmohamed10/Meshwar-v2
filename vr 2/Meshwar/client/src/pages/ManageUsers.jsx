@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const ManageUsers = () => {
   const [users, setUsers] = useState([]);
@@ -17,7 +18,7 @@ const ManageUsers = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/admin/users');
+      const response = await axios.get('/api/admin/users');
       if (response.data.success) {
         setUsers(response.data.data);
       }
@@ -32,13 +33,16 @@ const ManageUsers = () => {
     const isConfirmed = window.confirm("Are you sure you want to delete this user? This action cannot be undone.");
     if (isConfirmed) {
       try {
-        const response = await axios.delete(`http://localhost:3000/api/admin/users/${id}`);
+        const response = await axios.delete(`/api/admin/users/${id}`);
         if (response.data.success) {
           setUsers(users.filter(user => user._id !== id));
+          toast.success("User deleted successfully");
+        } else {
+          toast.error(response.data.message || "Failed to delete user");
         }
       } catch (error) {
         console.error("Failed to delete user", error);
-        alert("Failed to delete user.");
+        toast.error("Failed to delete user.");
       }
     }
   };
@@ -140,7 +144,7 @@ const ManageUsers = () => {
                       <button 
                         onClick={() => handleDeleteUser(user._id)}
                         className="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-md font-medium transition text-sm"
-                        disabled={user.role === 'admin'}
+                        title="Delete user"
                       >
                         Delete
                       </button>

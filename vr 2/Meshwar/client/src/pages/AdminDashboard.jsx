@@ -21,7 +21,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchAdminStats = async () => {
       try {
-        const response = await axios.get('http://localhost:3000/api/admin/stats');
+        const response = await axios.get('/api/admin/stats');
         if (response.data.success) {
           setStats(response.data.data);
         }

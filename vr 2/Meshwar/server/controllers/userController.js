@@ -41,7 +41,7 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body
-        const user = await User.findOne({ email })
+        const user = await User.findOne({ email: new RegExp('^' + email + '$', 'i') })
         if (!user) {
             return res.json({ success: false, message: "User not found" })
         }
