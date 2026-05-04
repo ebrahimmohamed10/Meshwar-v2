@@ -37,6 +37,23 @@ const AdminManageCars = () => {
     }
   };
 
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const response = await axios.put(`/api/admin/cars/${id}/status`,
+        { status: newStatus },
+        { headers: { Authorization: adminToken } }
+      );
+      if (response.data.success) {
+        setCars(cars.map(car => car._id === id ? { ...car, status: newStatus } : car));
+        toast.success(`Car ${newStatus} successfully`);
+      }
+    } catch (error) {
+      console.error("Failed to update car status", error);
+      toast.error("Failed to update status.");
+    }
+  };
+
+
   const handleDeleteCar = async (id) => {
     const isConfirmed = window.confirm("Are you sure you want to delete this car? This will remove it from the platform permanently.");
     if (isConfirmed) {
@@ -189,29 +206,60 @@ const AdminManageCars = () => {
                         </div>
                       </div>
                     </td>
+                    
+                    
                     <td className="py-4 px-6 text-right">
                       <div className="text-gray-900 font-bold">{car.pricePerDay.toLocaleString()} EGP</div>
                       <div className="text-[10px] text-gray-400 uppercase">Per Day</div>
                     </td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${car.isAvaliable ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20' : 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/10'
-                        }`}>
+                    <td className="py-4 px-6 flex flex-col items-start gap-2">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${car.isAvaliable ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20' : 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/10'}`}>
                         {car.isAvaliable ? (
                           <><span className="w-1 h-1 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span> Available</>
                         ) : (
                           <><span className="w-1 h-1 rounded-full bg-rose-500 mr-1.5"></span> Booked/Offline</>
                         )}
                       </span>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        car.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        car.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {car.status || 'pending'}
+                      </span>
                     </td>
+
+
                     <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteCar(car._id); }}
-                        className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-all"
-                        title="Delete vehicle from platform"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {(!car.status || car.status === 'pending') && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleStatusChange(car._id, 'approved'); }}
+                              className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition-all"
+                              title="Approve Car"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleStatusChange(car._id, 'rejected'); }}
+                              className="text-orange-600 hover:bg-orange-50 p-2 rounded-lg transition-all"
+                              title="Reject Car"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteCar(car._id); }}
+                          className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-all"
+                          title="Delete vehicle from platform"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
                     </td>
+                    
                   </motion.tr>
                 ))
               )}

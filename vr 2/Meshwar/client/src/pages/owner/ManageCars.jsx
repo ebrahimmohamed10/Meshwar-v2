@@ -28,7 +28,13 @@ const ManageCars = () => {
     }
   }
 
-  const toggleAvailability = async (carId) => {
+  const toggleAvailability = async (carId, approvalStatus) => {
+    // Prevent toggling if not approved
+    if (String(approvalStatus).toLowerCase() !== 'approved') {
+      toast.error('You can only change availability for Approved cars.');
+      return;
+    }
+
     try {
       const { data } = await axios.post('/api/owner/toggle-car', { carId })
       if (data.success) {
@@ -146,7 +152,8 @@ const ManageCars = () => {
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Car</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider max-md:hidden">Category</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Daily Rate</th>
-                  <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin Status</th>
+                  <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Availability</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
@@ -179,15 +186,26 @@ const ManageCars = () => {
                       </div>
                     </td>
 
-                    {/* Status */}
+                    {/* Admin Approval Status */}
+                        <td className="py-4 px-6">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                            String(car.status).toLowerCase() === 'approved' ? 'bg-green-100 text-green-800' : 
+                            String(car.status).toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800' : 
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {car.status || 'pending'}
+                          </span>
+                        </td>
+
+                    {/* Availability Status */}
                     <td className="py-4 px-6 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold tracking-wide
                         ${car.isAvaliable ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20' :
-                          'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/10'}`}>
+                          'bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-500/10'}`}>
                         {car.isAvaliable ? (
                           <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span> Available</>
                         ) : (
-                          <><span className="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5"></span> Unavailable</>
+                          <><span className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-1.5"></span> Unavailable</>
                         )}
                       </span>
                     </td>
@@ -195,9 +213,10 @@ const ManageCars = () => {
                     {/* Actions */}
                     <td className="py-4 px-6 whitespace-nowrap text-right flex justify-end items-center gap-2">
                       <button
-                        onClick={() => toggleAvailability(car._id)}
-                        title={car.isAvaliable ? "Mark Unavailable" : "Mark Available"}
-                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        onClick={() => toggleAvailability(car._id, car.status)}
+                        disabled={String(car.status).toLowerCase() !== 'approved'}
+                        title={String(car.status).toLowerCase() !== 'approved' ? "Waiting for Admin Approval" : car.isAvaliable ? "Mark Unavailable" : "Mark Available"}
+                        className={`p-1.5 rounded-lg transition-colors ${String(car.status).toLowerCase() !== 'approved' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer'}`}
                       >
                         {car.isAvaliable ? (
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
@@ -209,7 +228,7 @@ const ManageCars = () => {
                       <button
                         onClick={() => openEditModal(car)}
                         title="Edit Car"
-                        className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                       </button>
@@ -217,7 +236,7 @@ const ManageCars = () => {
                       <button
                         onClick={() => deleteCar(car._id)}
                         title="Delete Car"
-                        className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                       </button>

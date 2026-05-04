@@ -44,7 +44,7 @@ export const loginUser = async (req, res) => {
         const user = await User.findOne({ email: new RegExp('^' + email + '$', 'i') })
         if (!user) {
             return res.json({ success: false, message: "User not found" })
-        }
+        }       
         const isMatch = await bcrypt.compare(password, user.password)
         if (!isMatch) {
             return res.json({ success: false, message: "Invalid Credentials" })
@@ -71,7 +71,7 @@ export const getUserData = async (req, res) => {
 // Get All Cars for the Frontend
 export const getCars = async (req, res) => {
     try {
-        const cars = await Car.find({}).sort({ isAvaliable: -1 })
+        const cars = await Car.find({ status: 'approved' }).sort({ isAvaliable: -1 })
         res.json({ success: true, cars })
     } catch (error) {
         console.log(error.message);

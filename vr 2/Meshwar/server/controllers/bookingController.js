@@ -240,3 +240,32 @@ export const cancelBooking = async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 }
+
+// API to get booked dates for a specific car (Add this at the end of the file)
+export const getCarBookedDates = async (req, res) => {
+    try {
+        const { carId } = req.params;
+        
+        // بنجيب كل الحجوزات المؤكدة للعربية دي بس
+        const bookings = await Booking.find({ car: carId, status: 'confirmed' });
+
+        let bookedDates = [];
+
+        // بنلف على الحجوزات ونطلع كل الأيام اللي بين تاريخ الاستلام والترجيع
+        bookings.forEach(booking => {
+            let currentDate = new Date(booking.pickupDate);
+            let endDate = new Date(booking.returnDate);
+            
+            while (currentDate <= endDate) {
+                bookedDates.push(new Date(currentDate).toISOString().split('T')[0]);
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        });
+
+        res.json({ success: true, bookedDates });
+
+    } catch (error) {
+        console.log(error.message);
+        res.json({ success: false, message: error.message });
+    }
+}

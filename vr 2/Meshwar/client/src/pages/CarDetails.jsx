@@ -1,184 +1,296 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { assets, dummyCarData } from '../assets/assets'
-import Loader from '../components/Loader'
-import { useAppContext } from '../context/AppContext'
-import toast from 'react-hot-toast'
-import { motion } from 'motion/react'
+  import React, { useEffect, useState } from 'react'
+  import { useNavigate, useParams } from 'react-router-dom'
+  import { assets, dummyCarData } from '../assets/assets'
+  import Loader from '../components/Loader'
+  import { useAppContext } from '../context/AppContext'
+  import toast from 'react-hot-toast'
+  import { motion } from 'motion/react'
+  import DatePicker from "react-datepicker"
+  import "react-datepicker/dist/react-datepicker.css"
 
-const CarDetails = () => {
+  const CarDetails = () => {
+    const { id } = useParams()
+    const { cars, axios, pickupDate, setPickupDate, returnDate, setReturnDate, user: userData } = useAppContext()
+    const navigate = useNavigate()
+    const [car, setCar] = useState(null)
+    
+    const [bookedDates, setBookedDates] = useState([]) 
+    const currency = import.meta.env.VITE_CURRENCY
+    console.log("User Data from Context:", userData);
 
-  const { id } = useParams()
-
-  const { cars, axios, pickupDate, setPickupDate, returnDate, setReturnDate } = useAppContext()
-
-  const navigate = useNavigate()
-  const [car, setCar] = useState(null)
-  const currency = import.meta.env.VITE_CURRENCY
+    
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!car.isAvaliable) {
-      toast.error('This car is currently unavailable for booking.')
-      return;
-    }
-    if (!pickupDate || !returnDate) {
-      toast.error('Please select both pickup and return dates.')
-      return;
-    }
-    navigate(`/checkout/${id}`);
-  }
+      e.preventDefault();
 
+
+      if (!userData) {
+        toast.error('Please login to book a car.');
+        return;
+      }
+
+    
+      const requiredFields = [
+        { key: 'phone', label: 'Phone Number' },
+        { key: 'idNumber', label: 'National ID' },       
+        { key: 'licenseNumber', label: 'Driving License' }, 
+        { key: 'job', label: 'Job Title' },              
+        { key: 'nationality', label: 'Nationality' },
+        { key: 'gender', label: 'Gender' }
+      ];
+
+
+      const missingFields = requiredFields
+        .filter(field => !userData[field.key] || userData[field.key] === 'Not Selected')
+        .map(field => field.label);
+
+
+      if (missingFields.length > 0) {
+        toast.error(`Please complete your profile. Missing: ${missingFields.join(', ')}`, { duration: 4000 });
+        
+        setTimeout(() => {
+          navigate('/my-account');
+        }, 2000);
+        
+        return;
+      }
+
+    
+
+      if (!car?.isAvaliable) {
+        toast.error('This car is currently unavailable for booking.');
+        return;
+      }
+      
+      if (!pickupDate || !returnDate) {
+        toast.error('Please select both pickup and return dates.');
+        return;
+      }
+      
+      navigate(`/checkout/${id}`);
+    }
   useEffect(() => {
     setCar(cars.find(car => car._id === id))
-  }, [cars, id])
 
-  return car ? (
-    <div className='px-6 md:px-16 lg:px-24 xl:px-32 mt-16'>
+      const fetchBookedDates = async () => {
+        try {
+          const { data } = await axios.get(`/api/bookings/car-dates/${id}`);
+          if (data.success && data.bookedDates) {
+            const datesToExclude = data.bookedDates.map(dateStr => new Date(dateStr));
+            setBookedDates(datesToExclude);
+          }
+        } catch (error) {
+          console.error("Error fetching booked dates:", error);
+        }
+      };
 
-      <button onClick={() => navigate(-1)} className='flex items-center gap-2 mb-6 text-gray-500 cursor-pointer'>
-        <img src={assets.arrow_icon} alt="" className='rotate-180 opacity-65' />
-        Back to all cars
-      </button>
+if (id) {
+      fetchBookedDates();
+    }
 
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12'>
-        {/* Left: Car Image & Details */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+    if (cars.length > 0 && id) {
+      const currentCar = cars.find(c => c._id === id);
+      if (currentCar) {
+        let recentCars = JSON.parse(localStorage.getItem('recentlyViewedCars')) || [];
+        recentCars = recentCars.filter(c => c._id !== currentCar._id);
+       recentCars.unshift({
+          _id: currentCar._id,
+          brand: currentCar.brand,
+          model: currentCar.model,
+          image: currentCar.image,
+          pricePerDay: currentCar.pricePerDay,
+          year: currentCar.year,
+          category: currentCar.category,
+          seating_capacity: currentCar.seating_capacity,
+          fuel_type: currentCar.fuel_type,
+          transmission: currentCar.transmission,
+          location: currentCar.location
+        });
+        if (recentCars.length > 12) {
+          recentCars = recentCars.slice(0, 12);
+        }
+        localStorage.setItem('recentlyViewedCars', JSON.stringify(recentCars));
+      }
+    }
+    }, [cars, id, axios])
 
-          className='lg:col-span-2'>
-          <motion.img
-            initial={{ scale: 0.98, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
+    return car ? (
+      <div className='px-6 md:px-16 lg:px-24 xl:px-32 mt-16'>
 
-            src={car.image} alt="" className='w-full h-auto md:max-h-100 object-cover rounded-xl mb-6 shadow-md' />
-          <motion.div className='space-y-6'
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-          >
-            <div>
-              <h1 className='text-3xl font-bold'>{car.brand} {car.model}</h1>
-              <p className='text-gray-500 text-lg'>{car.category} • {car.year}</p>
-            </div>
+        <button onClick={() => navigate(-1)} className='flex items-center gap-2 mb-6 text-gray-500 cursor-pointer'>
+          <img src={assets.arrow_icon} alt="" className='rotate-180 opacity-65' />
+          Back to all cars
+        </button>
+
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12'>
+          {/* Left: Car Image & Details */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className='lg:col-span-2'>
+            
+            <motion.img
+              initial={{ scale: 0.98, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              src={car.image} alt="" className='w-full h-auto md:max-h-100 object-cover rounded-xl mb-6 shadow-md' />
+              
+            <motion.div className='space-y-6'
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+            >
+              <div>
+                <h1 className='text-3xl font-bold'>{car.brand} {car.model}</h1>
+                <p className='text-gray-500 text-lg'>{car.category} • {car.year}</p>
+              </div>
+              <hr className='border-borderColor my-6' />
+
+              <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
+                {[
+                  { icon: assets.users_icon, text: `${car.seating_capacity} Seats` },
+                  { icon: assets.fuel_icon, text: car.fuel_type },
+                  { icon: assets.car_icon, text: car.transmission },
+                  { icon: assets.location_icon, text: car.location },
+                ].map(({ icon, text }) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    key={text} className='flex flex-col items-center bg-light p-4 rounded-lg'>
+                    <img src={icon} alt="" className='h-5 mb-2' />
+                    {text}
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Description */}
+              <div>
+                <h1 className='text-xl font-medium mb-3'>Description</h1>
+                <p className='text-gray-500'>{car.description}</p>
+              </div>
+
+              {/* Features (كودك الأصلي زي ما هو) */}
+              {(() => {
+                let featuresList = ["360 Camera", "Bluetooth", "GPS", "Heated Seats", "Rear View Mirror"];
+                if (car.features) {
+                  if (Array.isArray(car.features) && car.features.filter(f => typeof f === 'string' && f.trim() !== '').length > 0) {
+                    featuresList = car.features.filter(f => typeof f === 'string' && f.trim() !== '');
+                  } else if (typeof car.features === 'string' && car.features.trim() !== '') {
+                    featuresList = car.features.split(',').map(f => f.trim()).filter(f => f !== '');
+                  }
+                }
+
+                return (
+                  <div>
+                    <h1 className='text-xl font-medium mb-3'>Features</h1>
+                    <ul className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+                      {
+                        featuresList.map((item, index) => (
+                          <li key={index} className='flex items-center text-gray-500'>
+                            <img src={assets.check_icon} className='h-4 mr-2' alt="" />
+                            {item}
+                          </li>
+                        ))
+                      }
+                    </ul>
+                  </div>
+                );
+              })()}
+
+            </motion.div>
+          </motion.div>
+
+          {/* Right: Booking Form */}
+          <motion.form
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+            onSubmit={handleSubmit} className='shadow-lg h-max sticky top-18 rounded-xl p-6 space-y-6 text-gray-500'>
+
+            <p className='flex items-center justify-between text-2xl text-gray-800 font-semibold'>
+              {car.pricePerDay.toLocaleString()} {currency}
+              <span className='text-base text-gray-400 font-normal'>per day</span>
+            </p>
             <hr className='border-borderColor my-6' />
 
-            <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
-              {[
-                { icon: assets.users_icon, text: `${car.seating_capacity} Seats` },
-                { icon: assets.fuel_icon, text: car.fuel_type },
-                { icon: assets.car_icon, text: car.transmission },
-                { icon: assets.location_icon, text: car.location },
-              ].map(({ icon, text }) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-
-                  key={text} className='flex flex-col items-center bg-light p-4 rounded-lg'>
-                  <img src={icon} alt="" className='h-5 mb-2' />
-                  {text}
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Description */}
-            <div>
-              <h1 className='text-xl font-medium mb-3'>Description</h1>
-              <p className='text-gray-500'>{car.description}</p>
-            </div>
-
-            {/* Features */}
-            {(() => {
-              let featuresList = ["360 Camera", "Bluetooth", "GPS", "Heated Seats", "Rear View Mirror"];
-              if (car.features) {
-                if (Array.isArray(car.features) && car.features.filter(f => typeof f === 'string' && f.trim() !== '').length > 0) {
-                  featuresList = car.features.filter(f => typeof f === 'string' && f.trim() !== '');
-                } else if (typeof car.features === 'string' && car.features.trim() !== '') {
-                  featuresList = car.features.split(',').map(f => f.trim()).filter(f => f !== '');
-                }
-              }
-
-              return (
-                <div>
-                  <h1 className='text-xl font-medium mb-3'>Features</h1>
-                  <ul className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
-                    {
-                      featuresList.map((item, index) => (
-                        <li key={index} className='flex items-center text-gray-500'>
-                          <img src={assets.check_icon} className='h-4 mr-2' alt="" />
-                          {item}
-                        </li>
-                      ))
+  <div className='flex flex-col gap-2 [&_.react-datepicker-wrapper]:w-full'>
+              <label htmlFor="pickup-date">Pickup Date</label>
+              <div className='relative'>
+                <DatePicker
+                  id='pickup-date'
+                  selected={pickupDate ? new Date(pickupDate) : null}
+                  onChange={(date) => {
+                    const formattedDate = date ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0] : '';
+                    setPickupDate(formattedDate);
+                    if (returnDate && new Date(returnDate) <= date) {
+                      setReturnDate('');
                     }
-                  </ul>
-                </div>
-              );
-            })()}
+                  }}
+                  minDate={(() => {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    tomorrow.setHours(0, 0, 0, 0);
+                    return tomorrow;
+                  })()}
+                  excludeDates={bookedDates}
+                  placeholderText="mm/dd/yyyy"
+                  className='border border-borderColor pl-3 pr-10 py-2 rounded-lg w-full outline-none focus:border-primary transition-colors cursor-pointer'
+                  required
+                />
+                {/* أيقونة النتيجة */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
+                </svg>
+              </div>
+            </div>
 
-          </motion.div>
-        </motion.div>
+  <div className='flex flex-col gap-2 [&_.react-datepicker-wrapper]:w-full'>
+              <label htmlFor="return-date">Return Date</label>
+              <div className='relative'>
+                <DatePicker
+                  id='return-date'
+                  selected={returnDate ? new Date(returnDate) : null}
+                  onChange={(date) => {
+                    const formattedDate = date ? new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0] : '';
+                    setReturnDate(formattedDate);
+                  }}
+                  minDate={(() => {
+                    if (pickupDate) {
+                      const nextDay = new Date(pickupDate);
+                      nextDay.setDate(nextDay.getDate() + 1);
+                      return nextDay;
+                    }
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 2);
+                    tomorrow.setHours(0, 0, 0, 0);
+                    return tomorrow;
+                  })()}
+                  excludeDates={bookedDates}
+                  placeholderText="mm/dd/yyyy"
+                  className='border border-borderColor pl-3 pr-10 py-2 rounded-lg w-full outline-none focus:border-primary transition-colors cursor-pointer'
+                  required
+                  disabled={!pickupDate}
+                />
+                {/* أيقونة النتيجة */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
+                </svg>
+              </div>
+            </div>
+            <button
+              disabled={!car.isAvaliable}
+              className={`w-full transition-all py-3 font-medium text-white rounded-xl ${!car.isAvaliable ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dull cursor-pointer'}`}
+            >
+              {!car.isAvaliable ? 'Not Available for Booking' : 'Book Now'}
+            </button>
 
-        {/* Right: Booking Form */}
-        <motion.form
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
+          </motion.form>
+        </div>
 
-          onSubmit={handleSubmit} className='shadow-lg h-max sticky top-18 rounded-xl p-6 space-y-6 text-gray-500'>
-
-          <p className='flex items-center justify-between text-2xl text-gray-800 font-semibold'>
-            {car.pricePerDay.toLocaleString()} {currency}
-            <span className='text-base text-gray-400 font-normal'>per day</span>
-          </p>
-          <hr className='border-borderColor my-6' />
-
-          <div className='flex flex-col gap-2'>
-            <label htmlFor="pickup-date">Pickup Date</label>
-            <input value={pickupDate} onChange={(e) => setPickupDate(e.target.value)}
-              type="date" className='border border-borderColor px-3 py-2 rounded-lg' required id='pickup-date' min={(() => {
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                const yyyy = tomorrow.getFullYear();
-                const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
-                const dd = String(tomorrow.getDate()).padStart(2, '0');
-                return `${yyyy}-${mm}-${dd}`;
-              })()} />
-          </div>
-
-          <div className='flex flex-col gap-2'>
-            <label htmlFor="return-date">Return Date</label>
-            <input value={returnDate} onChange={(e) => setReturnDate(e.target.value)}
-              type="date" className='border border-borderColor px-3 py-2 rounded-lg' required id='return-date' min={(() => {
-                if (pickupDate) {
-                  const nextDay = new Date(pickupDate);
-                  nextDay.setDate(nextDay.getDate() + 1);
-                  return nextDay.toISOString().split('T')[0];
-                }
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 2);
-                const yyyy = tomorrow.getFullYear();
-                const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
-                const dd = String(tomorrow.getDate()).padStart(2, '0');
-                return `${yyyy}-${mm}-${dd}`;
-              })()} />
-          </div>
-
-          <button
-            disabled={!car.isAvaliable}
-            className={`w-full transition-all py-3 font-medium text-white rounded-xl ${!car.isAvaliable ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dull cursor-pointer'}`}
-          >
-            {!car.isAvaliable ? 'Not Available for Booking' : 'Book Now'}
-          </button>
-
-        </motion.form>
       </div>
+    ) : <Loader />
+  }
 
-    </div>
-  ) : <Loader />
-}
-
-export default CarDetails
+  export default CarDetails

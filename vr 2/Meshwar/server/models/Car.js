@@ -15,8 +15,13 @@ const carSchema = new mongoose.Schema({
     location: { type: String, required: true },
     description: { type: String, required: true },
     features: { type: [String], default: [] },
-    isAvaliable: { type: Boolean, default: true }
+    isAvaliable: { type: Boolean, default: true },
+
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }
+    
 }, { timestamps: true })
+
+
 
 const Car = mongoose.model('Car', carSchema)
 

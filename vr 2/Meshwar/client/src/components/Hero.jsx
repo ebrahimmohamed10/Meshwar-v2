@@ -27,8 +27,7 @@ const Hero = () => {
             <div className="absolute bottom-20 right-10 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/4 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="relative z-10 flex flex-col items-center text-center gap-6 px-4 w-full max-w-5xl">
-
+<div className="relative z-20 flex flex-col items-center text-center gap-6 px-4 w-full max-w-5xl">
                 {/* Badge */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -164,14 +163,19 @@ const Hero = () => {
             </div>
 
             {/* Car image */}
-            <motion.img
-                initial={{ y: 80, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 1, delay: 0.5 }}
-                src={assets.main_car}
-                alt="car"
-                className='relative z-10 max-h-72 md:max-h-80 mt-8 float-anim drop-shadow-2xl'
-            />
+            {/* Car image */}
+{/* Car image */}
+{/* Car image */}
+            <motion.div className="w-full max-w-[1600px] mx-auto flex justify-center mt-2 md:-mt-10 lg:-mt-16 xl:-mt-24 2xl:-mt-32">
+                <motion.img
+                    initial={{ y: 80, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 1, delay: 0.5 }}
+                    src={assets.main_car}
+                    alt="car"
+                    className='relative z-10 w-[95%] md:w-[950px] lg:w-[1150px] xl:w-[1350px] 2xl:w-[1550px] h-auto object-contain float-anim drop-shadow-2xl'
+                />
+            </motion.div>
         </div>
     )
 }

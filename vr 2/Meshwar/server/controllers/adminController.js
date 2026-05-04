@@ -130,10 +130,21 @@ export const cancelBookingByAdmin = async (req, res) => {
 export const approveCar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, rejectionReason } = req.body;
-    const car = await Car.findByIdAndUpdate(id, { status, rejectionReason }, { new: true });
-    res.json({ success: true, message: `Car ${status} successfully`, data: car });
+    const { status } = req.body;
+
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+        return res.status(400).json({ success: false, message: "Invalid status value" });
+    }
+
+    const car = await Car.findByIdAndUpdate(id, { status }, { new: true });
+    
+    if (!car) {
+        return res.status(404).json({ success: false, message: "Car not found" });
+    }
+
+    res.json({ success: true, message: `Car status updated to ${status}` });
   } catch (error) {
+    console.error("Error updating car status:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
