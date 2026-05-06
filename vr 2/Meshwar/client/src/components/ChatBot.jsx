@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 
 /* ─── Inline styles (no extra deps needed) ─── */
 const css = `
@@ -216,6 +217,19 @@ const css = `
     color: #fca5a5;
   }
   .cb-ts { font-size: 10px; margin-top: 5px; opacity: .45; }
+
+  /* Markdown Styles */
+  .cb-markdown { display: flex; flex-direction: column; gap: 8px; }
+  .cb-markdown p { margin: 0; line-height: 1.55; }
+  .cb-markdown strong { font-weight: 700; color: #fff; }
+  .cb-markdown em { font-style: italic; }
+  .cb-markdown ul { margin: 0; padding-left: 20px; list-style-type: disc; }
+  .cb-markdown ol { margin: 0; padding-left: 20px; list-style-type: decimal; }
+  .cb-markdown li { margin-bottom: 4px; }
+  .cb-markdown li:last-child { margin-bottom: 0; }
+  .cb-markdown h1, .cb-markdown h2, .cb-markdown h3, .cb-markdown h4 { margin: 0; font-size: 1em; font-weight: 700; color: #fff; }
+  .cb-markdown a { color: #38bdf8; text-decoration: none; }
+  .cb-markdown a:hover { text-decoration: underline; }
 
   /* Typing indicator */
   .cb-typing {
@@ -487,7 +501,13 @@ const ChatBot = () => {
                     <div key={msg.id} className={`cb-row ${msg.type}`}>
                       {msg.type === 'bot' && <div className="cb-bot-avatar">🤖</div>}
                       <div className={`cb-bubble ${msg.type}${msg.isError ? ' error' : ''}`}>
-                        {msg.text}
+                        {msg.type === 'bot' && !msg.isError ? (
+                          <div className="cb-markdown">
+                            <ReactMarkdown>{msg.text}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          msg.text
+                        )}
                         <div className="cb-ts">{msg.timestamp}</div>
                       </div>
                     </div>

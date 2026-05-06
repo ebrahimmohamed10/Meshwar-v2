@@ -9,6 +9,7 @@ import bookingRouter from "./routes/bookingRoutes.js";
 import chatbotRouter from "./routes/chatbotRoutes.js";
 import { startAutoCancelJob } from "./utils/autoCancelJob.js";
 import adminRouter from "./routes/adminRoute.js";
+import pricingRouter from "./routes/pricingRoutes.js";
 
 // Initialize Express App
 // Force restart to apply auto-cancel UTC fix
@@ -58,5 +59,6 @@ app.use('/api/owner', ownerRouter)
 app.use('/api/bookings', bookingRouter)
 app.use('/api/chatbot', chatbotRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/pricing', pricingRouter)
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, ()=> console.log(`Server running on port ${PORT}`))

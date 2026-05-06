@@ -1,7 +1,7 @@
 import Booking from "../models/Booking.js"
 import Car from "../models/Car.js";
 import User from "../models/User.js";
-
+import { calculateDynamicPrice } from "../utils/pricingEngine.js";
 
 // Function to Check Availability of Car for a given Date
 const checkAvailability = async (car, pickupDate, returnDate) => {
@@ -103,8 +103,16 @@ export const createBooking = async (req, res) => {
         const carData = await Car.findById(car)
 
         // Calculate price based on pickupDate and returnDate
-        const noOfDays = Math.ceil((returned - picked) / (1000 * 60 * 60 * 24)) || 1
-        const price = carData.pricePerDay * noOfDays;
+        let price, priceBreakdown;
+        if (carData.dynamicPricingEnabled) {
+            const pricing = await calculateDynamicPrice({ carId: car, pickupDate, returnDate });
+            price = pricing.totalPrice;
+            priceBreakdown = pricing.breakdown;
+        } else {
+            const noOfDays = Math.ceil((returned - picked) / (1000 * 60 * 60 * 24)) || 1;
+            price = carData.pricePerDay * noOfDays;
+            priceBreakdown = null;
+        }
 
         // Handle Wallet Payment
         if (paymentMethod === 'Wallet') {
@@ -115,7 +123,16 @@ export const createBooking = async (req, res) => {
             await User.findByIdAndUpdate(_id, { $inc: { wallet: -price } })
         }
 
-        await Booking.create({ car, owner: carData.owner, user: _id, pickupDate, returnDate, price, paymentMethod: paymentMethod || 'offline' })
+        await Booking.create({ 
+            car, 
+            owner: carData.owner, 
+            user: _id, 
+            pickupDate, 
+            returnDate, 
+            price, 
+            priceBreakdown,
+            paymentMethod: paymentMethod || 'offline' 
+        })
 
         res.json({ success: true, message: "Booking Created" })
 

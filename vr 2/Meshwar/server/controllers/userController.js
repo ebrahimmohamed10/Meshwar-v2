@@ -71,7 +71,24 @@ export const getUserData = async (req, res) => {
 // Get All Cars for the Frontend
 export const getCars = async (req, res) => {
     try {
-        const cars = await Car.find({ status: 'approved' }).sort({ isAvaliable: -1 })
+        const cars = await Car.aggregate([
+            { $match: { status: 'approved' } },
+            {
+                $lookup: {
+                    from: "bookings",
+                    localField: "_id",
+                    foreignField: "car",
+                    as: "bookings"
+                }
+            },
+            {
+                $addFields: {
+                    bookingCount: { $size: "$bookings" }
+                }
+            },
+            { $project: { bookings: 0 } },
+            { $sort: { isAvaliable: -1, bookingCount: -1 } }
+        ]);
         res.json({ success: true, cars })
     } catch (error) {
         console.log(error.message);

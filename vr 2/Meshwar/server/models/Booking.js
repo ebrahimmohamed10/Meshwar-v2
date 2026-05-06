@@ -10,6 +10,13 @@ const bookingSchema = new mongoose.Schema({
     status: {type: String, enum: ["pending", "confirmed", "cancelled", "rejected"], default: "pending"},
     cancellationReason: {type: String},
     price: {type: Number, required: true},
+    priceBreakdown: {
+        basePrice: Number,
+        durationDiscount: Number,
+        weekendDays: Number,
+        leadTimeMultiplier: Number,
+        averagePricePerDay: Number
+    },
     paymentMethod: {type: String, default: "offline"}
 },{timestamps: true})
 

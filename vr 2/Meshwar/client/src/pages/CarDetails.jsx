@@ -13,6 +13,8 @@
     const { cars, axios, pickupDate, setPickupDate, returnDate, setReturnDate, user: userData } = useAppContext()
     const navigate = useNavigate()
     const [car, setCar] = useState(null)
+    const [calculatedPrice, setCalculatedPrice] = useState(null)
+    const [isCalculating, setIsCalculating] = useState(false)
     
     const [bookedDates, setBookedDates] = useState([]) 
     const currency = import.meta.env.VITE_CURRENCY
@@ -114,6 +116,32 @@ if (id) {
     }
     }, [cars, id, axios])
 
+    useEffect(() => {
+      const fetchPrice = async () => {
+        if (car && pickupDate && returnDate) {
+          setIsCalculating(true);
+          try {
+            const { data } = await axios.post('/api/pricing/calculate', {
+              carId: id,
+              pickupDate,
+              returnDate
+            });
+            if (data.success) {
+              setCalculatedPrice(data.pricing);
+            }
+          } catch (error) {
+            console.error("Error calculating price:", error);
+          } finally {
+            setIsCalculating(false);
+          }
+        } else {
+          setCalculatedPrice(null);
+        }
+      };
+
+      fetchPrice();
+    }, [car, pickupDate, returnDate, id, axios]);
+
     return car ? (
       <div className='px-6 md:px-16 lg:px-24 xl:px-32 mt-16'>
 
@@ -209,10 +237,139 @@ if (id) {
             transition={{ delay: 0.3, duration: 0.6 }}
             onSubmit={handleSubmit} className='shadow-lg h-max sticky top-18 rounded-xl p-6 space-y-6 text-gray-500'>
 
-            <p className='flex items-center justify-between text-2xl text-gray-800 font-semibold'>
-              {car.pricePerDay.toLocaleString()} {currency}
-              <span className='text-base text-gray-400 font-normal'>per day</span>
-            </p>
+            <div className='flex flex-col gap-1'>
+              <p className='flex items-center justify-between text-2xl text-gray-800 font-semibold'>
+                {calculatedPrice ? calculatedPrice.totalPrice.toLocaleString() : car.pricePerDay.toLocaleString()} {currency}
+                {calculatedPrice ? 
+                  <span className='text-base text-gray-400 font-normal'>Total Price</span> :
+                  <span className='text-base text-gray-400 font-normal'>per day</span>
+                }
+              </p>
+              
+              {calculatedPrice && calculatedPrice.breakdown && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className='mt-4 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm'
+                >
+                  <div className='bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between'>
+                    <h3 className='font-semibold text-gray-700 flex items-center gap-2'>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-primary">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      Price Details
+                    </h3>
+                    <span className='text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-md'>
+                      {calculatedPrice.breakdown.totalDays} Days
+                    </span>
+                  </div>
+                  
+                  <div className='p-4 space-y-3 text-sm'>
+                    {/* Base Rate */}
+                    <div className='flex justify-between items-center text-gray-600'>
+                      <span>Base Rate ({car.pricePerDay} x {calculatedPrice.breakdown.totalDays})</span>
+                      <span className='font-medium'>{(calculatedPrice.breakdown.basePrice * calculatedPrice.breakdown.totalDays).toLocaleString()} {currency}</span>
+                    </div>
+
+                    {/* Seasonal Adjustments */}
+                    {calculatedPrice.breakdown.seasonName && (
+                      <div className={`flex justify-between items-center ${calculatedPrice.breakdown.seasonalMultiplier > 1 ? 'text-orange-500' : 'text-green-600'}`}>
+                        <span className='flex items-center gap-1.5'>
+                          {calculatedPrice.breakdown.seasonalMultiplier > 1 ? '☀️' : '❄️'} {calculatedPrice.breakdown.seasonName}
+                        </span>
+                        <span className='font-medium'>
+                          {calculatedPrice.breakdown.seasonalMultiplier > 1 ? '+' : '-'}{Math.abs(Math.round((calculatedPrice.breakdown.seasonalMultiplier - 1) * 100))}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Market Demand */}
+                    {calculatedPrice.breakdown.demandMultiplier !== 1 && (
+                      <div className={`flex justify-between items-center ${calculatedPrice.breakdown.demandMultiplier > 1 ? 'text-orange-500' : 'text-green-600'}`}>
+                        <span className='flex items-center gap-1.5'>
+                          {calculatedPrice.breakdown.demandMultiplier > 1 ? '📈' : '📉'} {calculatedPrice.breakdown.demandLabel}
+                        </span>
+                        <span className='font-medium'>
+                          {calculatedPrice.breakdown.demandMultiplier > 1 ? '+' : '-'}{Math.abs(Math.round((calculatedPrice.breakdown.demandMultiplier - 1) * 100))}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Car Feature Discounts */}
+                    {calculatedPrice.breakdown.carFeatureMultiplier !== 1 && (
+                      <div className='flex justify-between items-center text-green-600'>
+                        <span className='flex items-center gap-1.5'>
+                          📉 {calculatedPrice.breakdown.carFeatureLabel}
+                        </span>
+                        <span className='font-medium'>
+                          -{Math.round((1 - calculatedPrice.breakdown.carFeatureMultiplier) * 100)}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Weekend / Weekday Surcharge */}
+                    {calculatedPrice.breakdown.weekendDays > 0 && (
+                      <div className='flex justify-between items-center text-orange-500'>
+                        <span className='flex items-center gap-1.5'>
+                           📅 Weekend Rate ({calculatedPrice.breakdown.weekendDays} days)
+                        </span>
+                        <span className='font-medium'>+15%</span>
+                      </div>
+                    )}
+                    
+                    {calculatedPrice.breakdown.weekdayDays > 0 && calculatedPrice.breakdown.seasonalMultiplier === 1.0 && calculatedPrice.breakdown.demandMultiplier <= 1.0 && (
+                      <div className='flex justify-between items-center text-green-600'>
+                        <span className='flex items-center gap-1.5'>
+                           📉 Normal Weekday ({calculatedPrice.breakdown.weekdayDays} days)
+                        </span>
+                        <span className='font-medium'>-20%</span>
+                      </div>
+                    )}
+
+                    {/* Lead Time (Last-Minute) */}
+                    {calculatedPrice.breakdown.leadTimeMultiplier > 1 && (
+                      <div className='flex justify-between items-center text-red-500'>
+                        <span className='flex items-center gap-1.5'>
+                          ⏱️ Last-Minute Booking
+                        </span>
+                        <span className='font-medium'>
+                          +{Math.abs(Math.round((calculatedPrice.breakdown.leadTimeMultiplier - 1) * 100))}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Duration Discount */}
+                    {calculatedPrice.breakdown.durationDiscount !== 1 && (
+                      <div className='flex justify-between items-center text-green-600'>
+                        <span className='flex items-center gap-1.5'>
+                          📉 Long-Term Discount
+                        </span>
+                        <span className='font-medium'>-{Math.round((1 - calculatedPrice.breakdown.durationDiscount) * 100)}%</span>
+                      </div>
+                    )}
+
+                    {/* Price Cap Indicator */}
+                    {calculatedPrice.breakdown.capped && (
+                      <div className='flex justify-between items-center text-blue-600 bg-blue-50 p-2 rounded-lg mt-2'>
+                        <span className='flex items-center gap-1.5 text-xs font-semibold'>
+                          🛡️ Price Protection Applied
+                        </span>
+                        <span className='font-medium text-xs'>
+                          {calculatedPrice.breakdown.capped === "max" ? "Capped at +15%" : "Capped at -15%"}
+                        </span>
+                      </div>
+                    )}
+
+                    <hr className='border-gray-100 my-2' />
+                    
+                    <div className='flex justify-between items-center text-base font-bold text-gray-900'>
+                      <span>Total Amount</span>
+                      <span className='text-primary'>{calculatedPrice.totalPrice.toLocaleString()} {currency}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </div>
             <hr className='border-borderColor my-6' />
 
   <div className='flex flex-col gap-2 [&_.react-datepicker-wrapper]:w-full'>
@@ -280,10 +437,10 @@ if (id) {
               </div>
             </div>
             <button
-              disabled={!car.isAvaliable}
-              className={`w-full transition-all py-3 font-medium text-white rounded-xl ${!car.isAvaliable ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dull cursor-pointer'}`}
+              disabled={!car.isAvaliable || isCalculating}
+              className={`w-full transition-all py-3 font-medium text-white rounded-xl ${(!car.isAvaliable || isCalculating) ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dull cursor-pointer'}`}
             >
-              {!car.isAvaliable ? 'Not Available for Booking' : 'Book Now'}
+              {!car.isAvaliable ? 'Not Available' : isCalculating ? 'Calculating...' : 'Book Now'}
             </button>
 
           </motion.form>

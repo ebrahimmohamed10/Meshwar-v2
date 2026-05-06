@@ -36,12 +36,12 @@ const buildInventoryContext = (cars) => {
     categoryPrices[c.category].push(c.pricePerDay);
   });
   const categoryRanges = Object.entries(categoryPrices)
-    .map(([cat, ps]) => `${cat}: EGP ${Math.min(...ps)}–EGP ${Math.max(...ps)}/day`)
+    .map(([cat, ps]) => `${cat}: ${Math.min(...ps)}EGP–${Math.max(...ps)}EGP/day`)
     .join(', ');
 
   // Full car list (concise per car)
   const carList = cars.map(c =>
-    `  • ${c.brand} ${c.model} (${c.year}) | ${c.category} | ${c.fuel_type} | ${c.transmission} | ${c.seating_capacity} seats | EGP ${c.pricePerDay}/day | Location: ${c.location} | ${c.isAvaliable ? '✅ Available' : '❌ Not available'}`
+    `  • ${c.brand} ${c.model} (${c.year}) | ${c.category} | ${c.fuel_type} | ${c.transmission} | ${c.seating_capacity} seats | ${c.pricePerDay}EGP/day | Location: ${c.location} | ${c.isAvaliable ? '✅ Available' : '❌ Not available'}`
   ).join('\n');
 
   return `
@@ -49,8 +49,8 @@ const buildInventoryContext = (cars) => {
 
 SUMMARY:
 - Total cars listed: ${cars.length}  (${available.length} available, ${unavailable.length} not available)
-- Price range: EGP ${minPrice} – EGP ${maxPrice} per day
-- Average price: EGP ${avgPrice}/day
+- Price range: ${minPrice}EGP – ${maxPrice}EGP per day
+- Average price: ${avgPrice}EGP/day
 - Categories and price ranges: ${categoryRanges}
 - Fuel types: ${Object.entries(byFuel).map(([k, v]) => `${k} (${v})`).join(', ')}
 - Transmissions: ${Object.entries(byTransmission).map(([k, v]) => `${k} (${v})`).join(', ')}
@@ -71,9 +71,17 @@ IMPORTANT RULES:
 2. When asked about pricing, list actual cars with their exact prices from the data.
 3. When asked about availability, only mention cars marked ✅ Available.
 4. When asked about a specific brand/model/category, filter from the inventory and give exact details.
-5. Be concise, warm, and professional. Format lists clearly.
-6. If something is not in the inventory data, say so honestly.
-7. For booking questions, guide users: browse the Cars page → select a car → choose dates → confirm booking.
+5. Format car listings cleanly! Do NOT use comma-separated run-on sentences for car details. Use structured bullet points for each car, like this:
+
+**Brand Model (Year)**
+* **Price:** X EGP/day
+* **Specs:** Category | Fuel | Transmission | Seats
+* **Location:** City
+* **Status:** ✅ Available
+
+6. Be concise, warm, and professional.
+7. If something is not in the inventory data, say so honestly.
+8. For booking questions, guide users: browse the Cars page → select a car → choose dates → confirm booking.
 
 {INVENTORY}
 `;
@@ -125,7 +133,7 @@ export const chatWithBot = async (req, res) => {
         if (matched.length > 0 && matched.length < cars.length) {
           extraContext = `\n\n[SEARCH MATCH for "${searchTerms.join(' ')}"]\n` +
             matched.map(c =>
-              `• ${c.brand} ${c.model} (${c.year}) — ${c.category}, ${c.fuel_type}, ${c.transmission}, ${c.seating_capacity} seats, EGP ${c.pricePerDay}/day, ${c.location}, ${c.isAvaliable ? 'Available' : 'Not available'}\n  Description: ${c.description}`
+              `• ${c.brand} ${c.model} (${c.year}) — ${c.category}, ${c.fuel_type}, ${c.transmission}, ${c.seating_capacity} seats, ${c.pricePerDay}EGP/day, ${c.location}, ${c.isAvaliable ? 'Available' : 'Not available'}\n  Description: ${c.description}`
             ).join('\n');
         }
       }
