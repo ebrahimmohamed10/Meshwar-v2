@@ -10,6 +10,7 @@ import chatbotRouter from "./routes/chatbotRoutes.js";
 import { startAutoCancelJob } from "./utils/autoCancelJob.js";
 import adminRouter from "./routes/adminRoute.js";
 import pricingRouter from "./routes/pricingRoutes.js";
+import reviewRouter from "./routes/reviewRoutes.js";
 
 // Initialize Express App
 // Force restart to apply auto-cancel UTC fix
@@ -44,21 +45,22 @@ app.use(express.json());
 
 // Middleware to check Database Connection Status
 app.use((req, res, next) => {
-    if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ 
-            success: false, 
-            message: "Database is not connected. Please check your MongoDB Atlas IP Whitelist and your internet connection." 
-        });
-    }
-    next();
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      message: "Database is not connected. Please check your MongoDB Atlas IP Whitelist and your internet connection."
+    });
+  }
+  next();
 });
 
-app.get('/', (req, res)=> res.send("Server is running"))
+app.get('/', (req, res) => res.send("Server is running"))
 app.use('/api/user', userRouter)
 app.use('/api/owner', ownerRouter)
 app.use('/api/bookings', bookingRouter)
 app.use('/api/chatbot', chatbotRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/pricing', pricingRouter)
+app.use('/api/reviews', reviewRouter)
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=> console.log(`Server running on port ${PORT}`))
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
