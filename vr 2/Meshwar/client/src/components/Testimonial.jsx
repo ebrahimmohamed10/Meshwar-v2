@@ -113,25 +113,25 @@ const Testimonial = () => {
                     </motion.button>
                 </div>
 
-                <div className="flex flex-col lg:flex-row gap-16">
-                    {/* Left Side: Stats & Filters (Sticky) */}
-                    <div className="lg:w-1/3 space-y-10">
-                        <div className="sticky top-10 space-y-10">
-                            {/* Bento Stats Card */}
-                            <motion.div 
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                className="bg-white p-10 rounded-[40px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] border border-slate-100 relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
-                                    <svg className="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                                </div>
-                                
-                                <div className="text-center mb-10">
+                <div className="flex flex-col gap-16">
+                    {/* Top Row: Stats & Filters Side-by-Side */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        {/* Bento Stats Card */}
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            className="bg-white p-10 rounded-[40px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] border border-slate-100 relative overflow-hidden h-full flex flex-col justify-center"
+                        >
+                            <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
+                                <svg className="w-32 h-32" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                            </div>
+                            
+                            <div className="flex flex-col md:flex-row items-center gap-10">
+                                <div className="text-center md:text-left shrink-0">
                                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Overall Satisfaction</div>
                                     <div className="text-8xl font-black text-slate-900 tracking-tighter mb-4">{stats?.averageRating || '0.0'}</div>
-                                    <div className="flex justify-center gap-1.5 mb-6">
+                                    <div className="flex justify-center md:justify-start gap-1.5 mb-6">
                                         {[1, 2, 3, 4, 5].map(star => (
                                             <img 
                                                 key={star} 
@@ -146,7 +146,7 @@ const Testimonial = () => {
                                     </p>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="flex-1 w-full space-y-4">
                                     {stats?.ratingDistribution?.map((dist) => (
                                         <div key={dist.rating} className="flex items-center gap-4 group">
                                             <span className="text-[10px] font-black text-slate-500 w-12">{dist.rating} Stars</span>
@@ -162,77 +162,77 @@ const Testimonial = () => {
                                         </div>
                                     ))}
                                 </div>
-                            </motion.div>
+                            </div>
+                        </motion.div>
 
-                            {/* Filter Section */}
-                            <motion.div 
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: 0.2 }}
-                                className="bg-slate-900 p-10 rounded-[40px] text-white shadow-2xl shadow-primary/20"
-                            >
-                                <div className="flex items-center gap-3 mb-8">
-                                    <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center">
-                                        <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-sm font-black uppercase tracking-widest">Filter Experiences</h3>
+                        {/* Filter Section */}
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: 0.2 }}
+                            className="bg-white p-10 rounded-[40px] text-slate-900 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] border border-slate-100 h-full flex flex-col justify-center"
+                        >
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                    </svg>
                                 </div>
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900">Filter Experiences</h3>
+                            </div>
 
-                                <div className="space-y-8">
-                                    <div>
-                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">Focus Area</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {categories.map(cat => (
-                                                <button
-                                                    key={cat}
-                                                    onClick={() => setFilter(prev => ({ ...prev, category: cat }))}
-                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
-                                                        filter.category === cat 
-                                                        ? 'bg-primary text-white scale-105 shadow-xl shadow-primary/30' 
-                                                        : 'bg-white/5 text-white/60 hover:bg-white/10'
-                                                    }`}
-                                                >
-                                                    {cat}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4">Rating</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {['', 5, 4, 3, 2, 1].map(r => (
-                                                <button
-                                                    key={r}
-                                                    onClick={() => setFilter(prev => ({ ...prev, rating: r }))}
-                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
-                                                        filter.rating === r 
-                                                        ? 'bg-primary text-white scale-105 shadow-xl shadow-primary/30' 
-                                                        : 'bg-white/5 text-white/60 hover:bg-white/10'
-                                                    }`}
-                                                >
-                                                    {r || 'Any'} {r && <img src={assets.star_icon} className="w-2.5 h-2.5 brightness-0 invert" />}
-                                                </button>
-                                            ))}
-                                        </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Focus Area</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {categories.map(cat => (
+                                            <button
+                                                key={cat}
+                                                onClick={() => setFilter(prev => ({ ...prev, category: cat }))}
+                                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                                                    filter.category === cat 
+                                                    ? 'bg-primary text-white scale-105 shadow-xl shadow-primary/30' 
+                                                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {cat}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
-                            </motion.div>
-                        </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Rating</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['', 5, 4, 3, 2, 1].map(r => (
+                                            <button
+                                                key={r}
+                                                onClick={() => setFilter(prev => ({ ...prev, rating: r }))}
+                                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
+                                                    filter.rating === r 
+                                                    ? 'bg-primary text-white scale-105 shadow-xl shadow-primary/30' 
+                                                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {r || 'Any'} {r && <img src={assets.star_icon} className={`w-2.5 h-2.5 ${filter.rating === r ? 'brightness-0 invert' : ''}`} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
                     </div>
 
-                    {/* Right Side: Reviews Grid */}
-                    <div className="lg:w-2/3">
+                    {/* Bottom Row: Reviews Grid (Full Width) */}
+                    <div className="w-full">
                         {loading ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {[1, 2, 3, 4].map(i => (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {[1, 2, 3, 4, 5, 6].map(i => (
                                     <div key={i} className="bg-white rounded-[40px] h-[300px] animate-pulse shadow-sm" />
                                 ))}
                             </div>
                         ) : reviews.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 <AnimatePresence mode="popLayout">
                                     {reviews.map((review, index) => (
                                         <motion.div
