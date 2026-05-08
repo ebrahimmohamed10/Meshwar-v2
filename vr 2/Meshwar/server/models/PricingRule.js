@@ -24,7 +24,6 @@ const pricingRuleSchema = new mongoose.Schema({
     weekendSurcharge: { type: Number, default: 1.15 },
     
     // Last-minute / early-bird
-    lastMinuteSurcharge: { type: Number, default: 1.2 },  // <24h
     earlyBirdDiscount: { type: Number, default: 0.95 },    // >15 days
     
     isActive: { type: Boolean, default: true }

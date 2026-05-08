@@ -33,8 +33,7 @@ export const calculateDynamicPrice = async ({ carId, pickupDate, returnDate }) =
         durationLabel: "Standard",
         weekendDays: 0,
         weekdayDays: 0,
-        leadTimeMultiplier: 1.0,
-        leadTimeLabel: "Standard",
+
         dailyBreakdown: []
     };
 
@@ -250,13 +249,6 @@ export const calculateDynamicPrice = async ({ carId, pickupDate, returnDate }) =
         }
     }
 
-    // Lead-time pricing
-    const daysUntilPickup = Math.ceil((pickup - new Date()) / (1000 * 60 * 60 * 24));
-    if (daysUntilPickup <= 1) {
-        breakdown.leadTimeMultiplier = rules?.lastMinuteSurcharge || 1.2;
-        breakdown.leadTimeLabel = "Last-minute surcharge";
-    }
-    totalPrice *= breakdown.leadTimeMultiplier;
 
     // --- Price Caps (-15% min, +15% max) ---
     const minAllowedPrice = basePrice * 0.85 * totalDays;

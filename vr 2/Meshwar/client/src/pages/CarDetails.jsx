@@ -326,17 +326,7 @@ if (id) {
                       </div>
                     )}
 
-                    {/* Lead Time (Last-Minute) */}
-                    {calculatedPrice.breakdown.leadTimeMultiplier > 1 && (
-                      <div className='flex justify-between items-center text-red-500'>
-                        <span className='flex items-center gap-1.5'>
-                          ⏱️ Last-Minute Booking
-                        </span>
-                        <span className='font-medium'>
-                          +{Math.abs(Math.round((calculatedPrice.breakdown.leadTimeMultiplier - 1) * 100))}%
-                        </span>
-                      </div>
-                    )}
+
 
                     {/* Duration Discount */}
                     {calculatedPrice.breakdown.durationDiscount !== 1 && (
