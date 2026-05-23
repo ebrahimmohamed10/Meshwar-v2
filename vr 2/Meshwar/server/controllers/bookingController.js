@@ -80,6 +80,34 @@ export const createBooking = async (req, res) => {
         const { _id } = req.user;
         const { car, pickupDate, returnDate, paymentMethod } = req.body;
 
+        // Fetch full user details to check verification status and completed fields/documents
+        const user = await User.findById(_id);
+        if (!user) {
+            return res.json({ success: false, message: "User not found." });
+        }
+
+        const requiredFields = ['phone', 'idNumber', 'licenseNumber', 'job', 'nationality', 'gender'];
+        const missingFields = requiredFields.filter(f => !user[f] || user[f] === 'Not Selected');
+        
+        const hasMissingDoc = !user.idCardFront || !user.idCardBack || !user.licenseFront || !user.licenseBack;
+
+        if (missingFields.length > 0 || hasMissingDoc) {
+            return res.json({ 
+                success: false, 
+                message: "Please complete your profile and upload all required documents (ID card front/back and driving license front/back) first." 
+            });
+        }
+
+        if (user.verificationStatus !== 'verified') {
+            let message = "Please complete identity verification under 'My Account' before booking.";
+            if (user.verificationStatus === 'pending') {
+                message = "Your verification is currently in progress. Please wait for the AI review to complete.";
+            } else if (user.verificationStatus === 'rejected') {
+                message = `Your identity verification was rejected: ${user.verificationError || 'Invalid details'}. Please update your details/documents under 'My Account'.`;
+            }
+            return res.json({ success: false, message });
+        }
+
         // Server-side validation for dates
         const picked = new Date(pickupDate);
         const returned = new Date(returnDate);

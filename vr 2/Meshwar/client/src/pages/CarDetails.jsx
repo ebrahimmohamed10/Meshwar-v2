@@ -46,9 +46,37 @@
         .filter(field => !userData[field.key] || userData[field.key] === 'Not Selected')
         .map(field => field.label);
 
+      const missingDocs = [];
+      if (!userData.idCardFront) missingDocs.push('ID Card (Front)');
+      if (!userData.idCardBack) missingDocs.push('ID Card (Back)');
+      if (!userData.licenseFront) missingDocs.push('License (Front)');
+      if (!userData.licenseBack) missingDocs.push('License (Back)');
 
-      if (missingFields.length > 0) {
-        toast.error(`Please complete your profile. Missing: ${missingFields.join(', ')}`, { duration: 4000 });
+      if (missingFields.length > 0 || missingDocs.length > 0) {
+        let errorMsg = '';
+        if (missingFields.length > 0) {
+          errorMsg += `Missing fields: ${missingFields.join(', ')}. `;
+        }
+        if (missingDocs.length > 0) {
+          errorMsg += `Missing documents: ${missingDocs.join(', ')}.`;
+        }
+        toast.error(`Please complete your profile. ${errorMsg}`, { duration: 4000 });
+        
+        setTimeout(() => {
+          navigate('/my-account');
+        }, 2000);
+        
+        return;
+      }
+
+      if (userData.verificationStatus !== 'verified') {
+        if (userData.verificationStatus === 'pending') {
+          toast.error('Your verification is currently in progress. Please wait for the AI review to complete.', { duration: 5000 });
+        } else if (userData.verificationStatus === 'rejected') {
+          toast.error(`Your identity verification was rejected: ${userData.verificationError || 'Invalid details'}. Please update your details/documents under 'My Account'.`, { duration: 5000 });
+        } else {
+          toast.error('Please complete identity verification under "My Account" before booking.', { duration: 5000 });
+        }
         
         setTimeout(() => {
           navigate('/my-account');

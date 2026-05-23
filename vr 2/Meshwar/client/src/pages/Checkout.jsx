@@ -51,6 +51,50 @@ const Checkout = () => {
                 category: 'Membership'
             })
         } else {
+            if (!token) {
+                toast.error('Please login to book a car.');
+                navigate('/');
+                return;
+            }
+            if (!user) {
+                // Wait for user details to load
+                return;
+            }
+
+            const requiredFields = ['phone', 'idNumber', 'licenseNumber', 'job', 'nationality', 'gender'];
+            const missingFields = requiredFields.filter(f => !user[f] || user[f] === 'Not Selected');
+            
+            const missingDocs = [];
+            if (!user.idCardFront) missingDocs.push('ID Card (Front)');
+            if (!user.idCardBack) missingDocs.push('ID Card (Back)');
+            if (!user.licenseFront) missingDocs.push('License (Front)');
+            if (!user.licenseBack) missingDocs.push('License (Back)');
+
+            if (missingFields.length > 0 || missingDocs.length > 0) {
+                let errorMsg = '';
+                if (missingFields.length > 0) {
+                    errorMsg += `Missing fields: ${missingFields.join(', ')}. `;
+                }
+                if (missingDocs.length > 0) {
+                    errorMsg += `Missing documents: ${missingDocs.join(', ')}.`;
+                }
+                toast.error(`Please complete your profile first. ${errorMsg}`);
+                navigate('/my-account');
+                return;
+            }
+
+            if (user.verificationStatus !== 'verified') {
+                if (user.verificationStatus === 'pending') {
+                    toast.error('Your verification is currently in progress. Please wait for the AI review to complete.');
+                } else if (user.verificationStatus === 'rejected') {
+                    toast.error(`Your identity verification was rejected: ${user.verificationError || 'Invalid details'}. Please update details/documents.`);
+                } else {
+                    toast.error('Please complete identity verification under "My Account" before booking.');
+                }
+                navigate('/my-account');
+                return;
+            }
+
             if (!pickupDate || !returnDate) {
                 toast.error('Please select pickup and return dates first.')
                 navigate(`/car-details/${id}`)
@@ -59,7 +103,7 @@ const Checkout = () => {
             const selectedCar = cars.find(c => c._id === id)
             if (selectedCar) setCar(selectedCar)
         }
-    }, [cars, id, pickupDate, returnDate, navigate, isPremiumCheckout, billingCycle, selectedPlan])
+    }, [cars, id, pickupDate, returnDate, navigate, isPremiumCheckout, billingCycle, selectedPlan, user, token])
 
     const days = isPremiumCheckout ? 1 : (() => {
         if (!pickupDate || !returnDate) return 0

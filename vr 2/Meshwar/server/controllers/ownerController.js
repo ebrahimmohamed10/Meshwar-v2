@@ -25,6 +25,34 @@ export const addCar = async (req, res) => {
         let car = JSON.parse(req.body.carData);
         const imageFile = req.file;
 
+        // Fetch full user details to check verification status and completed fields/documents
+        const user = await User.findById(_id);
+        if (!user) {
+            return res.json({ success: false, message: "User not found." });
+        }
+
+        const requiredFields = ['phone', 'idNumber', 'licenseNumber', 'job', 'nationality', 'gender'];
+        const missingFields = requiredFields.filter(f => !user[f] || user[f] === 'Not Selected');
+        
+        const hasMissingDoc = !user.idCardFront || !user.idCardBack || !user.licenseFront || !user.licenseBack;
+
+        if (missingFields.length > 0 || hasMissingDoc) {
+            return res.json({ 
+                success: false, 
+                message: "Please complete your profile and upload all required documents (ID card front/back and driving license front/back) first before listing a car." 
+            });
+        }
+
+        if (user.verificationStatus !== 'verified') {
+            let message = "Please complete identity verification under 'My Account' before listing a car.";
+            if (user.verificationStatus === 'pending') {
+                message = "Your verification is currently in progress. Please wait for the AI review to complete before listing a car.";
+            } else if (user.verificationStatus === 'rejected') {
+                message = `Your identity verification was rejected: ${user.verificationError || 'Invalid details'}. Please update your details/documents under 'My Account' before listing a car.`;
+            }
+            return res.json({ success: false, message });
+        }
+
         // Upload Image to ImageKit
         const fileBuffer = fs.readFileSync(imageFile.path)
         const response = await imagekit.upload({

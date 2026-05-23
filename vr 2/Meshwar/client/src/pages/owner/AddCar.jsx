@@ -6,7 +6,7 @@ import { motion } from 'motion/react'
 
 const AddCar = () => {
 
-  const {axios, currency, fetchCars} = useAppContext()
+  const {axios, currency, fetchCars, user} = useAppContext()
 
   const [image, setImage] = useState(null)
   const [car, setCar] = useState({
@@ -40,6 +40,130 @@ const AddCar = () => {
     newFeatures.splice(index, 1);
     setCar({ ...car, features: newFeatures });
   };
+
+  if (!user) {
+    return (
+      <div className='px-4 pt-10 md:px-10 flex-1 min-h-screen bg-[#F9FAFB] flex items-center justify-center'>
+        <div className="text-center">
+          <svg className="animate-spin h-8 w-8 text-indigo-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p className="text-gray-500 font-medium">Loading details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const hasAllDocs = !!(user.idCardFront && user.idCardBack && user.licenseFront && user.licenseBack);
+  const requiredFieldsList = ['phone', 'idNumber', 'licenseNumber', 'job', 'nationality', 'gender'];
+  const missingFieldsList = requiredFieldsList.filter(f => !user[f] || user[f] === 'Not Selected');
+
+  if (user.verificationStatus !== 'verified' || missingFieldsList.length > 0 || !hasAllDocs) {
+    return (
+      <div className='px-4 pt-10 md:px-10 flex-1 min-h-screen bg-[#F9FAFB] pb-12 flex items-center justify-center'>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className={`max-w-xl w-full bg-white rounded-3xl border border-gray-100 shadow-2xl overflow-hidden ${
+            user.verificationStatus === 'pending' ? 'shadow-amber-100' :
+            user.verificationStatus === 'rejected' ? 'shadow-rose-100' : 'shadow-emerald-100'
+          }`}
+        >
+          <div className={`h-2 w-full ${
+            user.verificationStatus === 'pending' ? 'bg-amber-500' :
+            user.verificationStatus === 'rejected' ? 'bg-rose-500' : 'bg-emerald-500'
+          }`} />
+          
+          <div className="p-8 sm:p-10 text-center space-y-6">
+            <div className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center shadow-md">
+              {user.verificationStatus === 'pending' ? (
+                <div className="relative w-full h-full bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center border border-amber-100">
+                  <div className="absolute inset-0 rounded-2xl bg-amber-400/20 animate-ping" />
+                  <svg className="animate-spin" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              ) : user.verificationStatus === 'rejected' ? (
+                <div className="w-full h-full bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center border border-rose-100">
+                  <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-full h-full bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center border border-emerald-100">
+                  <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                {user.verificationStatus === 'pending' ? 'Verification in Progress' :
+                 user.verificationStatus === 'rejected' ? 'Verification Rejected' : 'Verification Required'}
+              </h2>
+              <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed">
+                {user.verificationStatus === 'pending' ? 
+                  'Your profile verification is currently being processed by our AI KYC auditor. You will be able to list cars once verified.' :
+                 user.verificationStatus === 'rejected' ? 
+                  `Your profile verification was rejected: "${user.verificationError || 'Invalid details'}". Please update your details and retry.` :
+                  'To ensure safety and security, all car owners must complete their details, upload required documents, and complete identity verification.'
+                }
+              </p>
+            </div>
+
+            {(missingFieldsList.length > 0 || !hasAllDocs) && (
+              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 text-left max-w-md mx-auto space-y-3">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Requirements Checklist</span>
+                <ul className="space-y-2.5">
+                  <li className="flex items-center gap-2 text-sm">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${missingFieldsList.length === 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-400'}`}>
+                      {missingFieldsList.length === 0 ? '✓' : '•'}
+                    </div>
+                    <span className={missingFieldsList.length === 0 ? 'text-gray-500 font-semibold line-through' : 'text-gray-600 font-medium'}>
+                      {missingFieldsList.length === 0 ? 'Profile Information Complete' : `Complete profile fields (${missingFieldsList.length} missing)`}
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${hasAllDocs ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-400'}`}>
+                      {hasAllDocs ? '✓' : '•'}
+                    </div>
+                    <span className={hasAllDocs ? 'text-gray-500 font-semibold line-through' : 'text-gray-600 font-medium'}>
+                      {hasAllDocs ? 'Upload ID and Driving License' : 'Upload ID & License images (Front & Back)'}
+                    </span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${user.verificationStatus === 'verified' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-400'}`}>
+                      {user.verificationStatus === 'verified' ? '✓' : '•'}
+                    </div>
+                    <span className="text-gray-600 font-medium">Complete Identity Verification</span>
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            <div className="pt-2">
+              <button 
+                type="button"
+                onClick={() => window.location.href = '/my-account'}
+                className={`inline-flex items-center justify-center px-8 py-3.5 text-white rounded-xl font-bold text-sm tracking-wide shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-95 ${
+                  user.verificationStatus === 'pending' ? 'bg-amber-600 hover:bg-amber-700 hover:shadow-amber-200/50' :
+                  user.verificationStatus === 'rejected' ? 'bg-rose-600 hover:bg-rose-700 hover:shadow-rose-200/50' :
+                  'bg-emerald-600 hover:bg-emerald-700 hover:shadow-emerald-200/50'
+                }`}
+              >
+                Go to My Account
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
 
   const onSubmitHandler = async (e)=>{
     e.preventDefault()

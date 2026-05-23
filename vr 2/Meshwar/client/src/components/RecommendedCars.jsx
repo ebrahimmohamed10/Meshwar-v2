@@ -91,7 +91,8 @@ const RecommendedCars = () => {
               // Card component with original styling
               <div 
                 key={car._id} 
-                className="snap-start shrink-0 w-[calc(100%)] md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] group/card border border-gray-100 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 bg-white p-4"
+                onClick={() => { navigate(`/car-details/${car._id}`); window.scrollTo(0, 0); }}
+                className="snap-start shrink-0 w-[calc(100%)] md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] group/card border border-gray-100 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 bg-white p-4 cursor-pointer"
               >
                 
                 {/* Image Section */}
@@ -145,12 +146,11 @@ const RecommendedCars = () => {
                   </div>
 
                   {/* Booking Link - Ensures it opens at the top like Featured Vehicles */}
-                  <button 
-                    onClick={() => { navigate(`/car-details/${car._id}`); window.scrollTo(0, 0); }}
+                  <div 
                     className="block w-full text-center border border-[#16A34A] text-[#16A34A] font-bold py-2.5 rounded-xl hover:bg-[#16A34A] hover:text-white transition-colors duration-300 cursor-pointer"
                   >
                     View Details &rarr;
-                  </button>
+                  </div>
                 </div>
               </div>
             ))}

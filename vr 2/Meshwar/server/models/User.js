@@ -21,6 +21,11 @@ const userSchema = new mongoose.Schema({
     country: { type: String, default: 'Not Selected' },
     idCardFront: { type: String, default: '' },
     idCardBack: { type: String, default: '' },
+    licenseFront: { type: String, default: '' },
+    licenseBack: { type: String, default: '' },
+    verificationStatus: { type: String, enum: ['unverified', 'pending', 'verified', 'rejected'], default: 'unverified' },
+    verificationReport: { type: String, default: '' },
+    verificationError: { type: String, default: '' },
     isPremium: { type: Boolean, default: false },
     wallet: { type: Number, default: 0 },
 }, { timestamps: true })

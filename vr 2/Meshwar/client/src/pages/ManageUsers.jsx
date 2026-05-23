@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useOutletContext } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
 
 const ManageUsers = () => {
   const { adminToken } = useOutletContext() || {};
@@ -177,7 +178,7 @@ const ManageUsers = () => {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
                           user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 
                           user.role === 'owner' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
@@ -186,6 +187,26 @@ const ManageUsers = () => {
                         </span>
                         {user.role === 'admin' && <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">Owner</span>}
                         {(user.isPremium || user.role === 'owner' || user.role === 'admin') && <span className="bg-yellow-50 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-md border border-yellow-200 uppercase tracking-tighter">Premium</span>}
+                        {user.verificationStatus === 'verified' && (
+                          <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-md border border-emerald-200 uppercase tracking-wider">
+                            Verified
+                          </span>
+                        )}
+                        {user.verificationStatus === 'pending' && (
+                          <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-md border border-amber-200 uppercase tracking-wider animate-pulse">
+                            Pending
+                          </span>
+                        )}
+                        {user.verificationStatus === 'rejected' && (
+                          <span className="bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-1 rounded-md border border-rose-200 uppercase tracking-wider" title={user.verificationError}>
+                            Rejected
+                          </span>
+                        )}
+                        {(!user.verificationStatus || user.verificationStatus === 'unverified') && (
+                          <span className="bg-gray-50 text-gray-500 text-[10px] font-bold px-2 py-1 rounded-md border border-gray-200 uppercase tracking-wider">
+                            Unverified
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-4 px-6 text-gray-700 text-sm font-medium">
@@ -265,6 +286,46 @@ const ManageUsers = () => {
 
                 {/* Right Side - Full Details */}
                 <div className="md:col-span-2 p-8 max-h-[80vh] overflow-y-auto">
+                  {/* AI Verification Audit Box */}
+                  <div className="mb-8 p-6 bg-gray-50 border border-gray-200/60 rounded-2xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">AI Verification Audit</h4>
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        selectedUser.verificationStatus === 'verified' ? 'bg-emerald-100 text-emerald-700' :
+                        selectedUser.verificationStatus === 'pending' ? 'bg-amber-100 text-amber-700 animate-pulse' :
+                        selectedUser.verificationStatus === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {selectedUser.verificationStatus || 'unverified'}
+                      </span>
+                    </div>
+
+                    {selectedUser.verificationStatus === 'rejected' && selectedUser.verificationError && (
+                      <p className="text-xs text-rose-600 font-semibold mb-4 bg-rose-50 border border-rose-100 p-3 rounded-xl">
+                        Rejection Reason: {selectedUser.verificationError}
+                      </p>
+                    )}
+
+                    {selectedUser.verificationReport ? (
+                      <div className="bg-white rounded-xl border border-gray-150 p-4 max-h-60 overflow-y-auto">
+                        <ReactMarkdown
+                          components={{
+                            h1: ({node, ...props}) => <h1 className="text-sm font-bold text-gray-900 mt-2 mb-1 first:mt-0" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-xs font-bold text-gray-800 mt-1.5 mb-1" {...props} />,
+                            p: ({node, ...props}) => <p className="text-xs text-gray-600 leading-relaxed mb-1.5" {...props} />,
+                            ul: ({node, ...props}) => <ul className="list-disc pl-4 mb-2 space-y-0.5 text-xs text-gray-600" {...props} />,
+                            li: ({node, ...props}) => <li className="text-xs text-gray-600" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-bold text-gray-800" {...props} />
+                          }}
+                        >
+                          {selectedUser.verificationReport}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">No AI verification report available for this user.</p>
+                    )}
+                  </div>
+
                   <div className="mb-8">
                     <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Personal Information</h4>
                     <div className="grid grid-cols-2 gap-6">
@@ -329,7 +390,7 @@ const ManageUsers = () => {
 
                   {/* ID Card Previews */}
                   {(selectedUser.idCardFront || selectedUser.idCardBack) && (
-                    <div>
+                    <div className="mb-6">
                       <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-4">ID Verification Documents</h4>
                       <div className="grid grid-cols-2 gap-4">
                         {selectedUser.idCardFront && (
@@ -342,6 +403,27 @@ const ManageUsers = () => {
                           <div className="space-y-2">
                             <p className="text-[10px] text-gray-400 uppercase font-bold">Back Side</p>
                             <img src={selectedUser.idCardBack} alt="ID Back" className="w-full h-32 object-cover rounded-xl border border-gray-200" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Driving License Previews */}
+                  {(selectedUser.licenseFront || selectedUser.licenseBack) && (
+                    <div>
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-4">License Verification Documents</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {selectedUser.licenseFront && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] text-gray-400 uppercase font-bold">Front Side</p>
+                            <img src={selectedUser.licenseFront} alt="License Front" className="w-full h-32 object-cover rounded-xl border border-gray-200" />
+                          </div>
+                        )}
+                        {selectedUser.licenseBack && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] text-gray-400 uppercase font-bold">Back Side</p>
+                            <img src={selectedUser.licenseBack} alt="License Back" className="w-full h-32 object-cover rounded-xl border border-gray-200" />
                           </div>
                         )}
                       </div>
