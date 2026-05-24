@@ -78,7 +78,15 @@ export const checkAvailabilityOfCar = async (req, res) => {
 export const createBooking = async (req, res) => {
     try {
         const { _id } = req.user;
-        const { car, pickupDate, returnDate, paymentMethod } = req.body;
+        const { car, pickupDate, returnDate, paymentMethod, pickupLocation, returnLocation } = req.body;
+
+        // Validate pickup and return locations
+        if (!pickupLocation || !pickupLocation.trim()) {
+            return res.json({ success: false, message: "Pickup location is required." });
+        }
+        if (!returnLocation || !returnLocation.trim()) {
+            return res.json({ success: false, message: "Return location is required." });
+        }
 
         // Fetch full user details to check verification status and completed fields/documents
         const user = await User.findById(_id);
@@ -159,7 +167,9 @@ export const createBooking = async (req, res) => {
             returnDate, 
             price, 
             priceBreakdown,
-            paymentMethod: paymentMethod || 'offline' 
+            paymentMethod: paymentMethod || 'offline',
+            pickupLocation: pickupLocation.trim(),
+            returnLocation: returnLocation.trim()
         })
 
         res.json({ success: true, message: "Booking Created" })
@@ -204,7 +214,7 @@ export const getOwnerBookings = async (req, res) => {
 export const changeBookingStatus = async (req, res) => {
     try {
         const { _id } = req.user;
-        const { bookingId, status } = req.body
+        const { bookingId, status, rejectionReason } = req.body
 
         const booking = await Booking.findById(bookingId)
 
@@ -240,6 +250,9 @@ export const changeBookingStatus = async (req, res) => {
         }
 
         booking.status = status;
+        if (status === 'rejected' && rejectionReason) {
+            booking.cancellationReason = rejectionReason;
+        }
         await booking.save();
 
         res.json({ success: true, message: "Status Updated" })

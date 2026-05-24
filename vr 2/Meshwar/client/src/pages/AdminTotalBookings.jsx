@@ -128,6 +128,7 @@ const AdminTotalBookings = () => {
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rental Period</th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Total Price</th>
+                <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Locations</th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Action</th>
               </tr>
@@ -180,6 +181,22 @@ const AdminTotalBookings = () => {
                     </td>
                     <td className="py-4 px-6 text-right font-bold text-gray-900">
                       {b.price.toLocaleString()} EGP
+                    </td>
+                    <td className="py-4 px-6">
+                      {b.pickupLocation ? (
+                        <div className="space-y-1 min-w-[140px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-tighter font-bold">Pick-up</span>
+                            <span className="text-xs font-medium text-gray-800 truncate max-w-[120px]">{b.pickupLocation}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-tighter font-bold">Return</span>
+                            <span className="text-xs font-medium text-gray-800 truncate max-w-[120px]">{b.returnLocation || b.pickupLocation}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">Not specified</span>
+                      )}
                     </td>
                     <td className="py-4 px-6">
                       <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${getStatusStyle(b.status)}`}>

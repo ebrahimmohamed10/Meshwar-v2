@@ -215,15 +215,40 @@ const MyBookings = () => {
                         </div>
                       </div>
 
-                      {/* Bottom: Location */}
-                      <div className='flex items-center justify-between p-5 bg-gray-50/50'>
-                        <div className='flex items-center gap-4'>
-                          <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                            <img src={assets.location_icon_colored} alt="" className='w-4 h-4 opacity-80' />
+                      {/* Bottom: Locations */}
+                      <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 bg-gray-50/50'>
+                        <div className='flex items-center gap-6 flex-1'>
+                          {/* Pickup Location */}
+                          <div className='flex items-center gap-3'>
+                            <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                              <svg className='w-4 h-4 text-emerald-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                                <path strokeLinecap='round' strokeLinejoin='round' d='M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' />
+                                <path strokeLinecap='round' strokeLinejoin='round' d='M15 11a3 3 0 11-6 0 3 3 0 016 0z' />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className='text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-0.5'>Pick-up</p>
+                              <p className='text-[13px] font-bold text-gray-900 truncate max-w-[180px]'>{booking?.pickupLocation || booking?.car?.location}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className='text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-0.5'>Pick-up Location</p>
-                            <p className='text-[14px] font-bold text-gray-900 truncate'>{booking?.car?.location}</p>
+
+                          {/* Arrow separator */}
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-300 hidden sm:block shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                          </svg>
+
+                          {/* Return Location */}
+                          <div className='flex items-center gap-3'>
+                            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                              <svg className='w-4 h-4 text-blue-500' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                                <path strokeLinecap='round' strokeLinejoin='round' d='M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' />
+                                <path strokeLinecap='round' strokeLinejoin='round' d='M15 11a3 3 0 11-6 0 3 3 0 016 0z' />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className='text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-0.5'>Return</p>
+                              <p className='text-[13px] font-bold text-gray-900 truncate max-w-[180px]'>{booking?.returnLocation || booking?.car?.location}</p>
+                            </div>
                           </div>
                         </div>
 

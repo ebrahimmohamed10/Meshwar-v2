@@ -17,7 +17,9 @@ const bookingSchema = new mongoose.Schema({
         leadTimeMultiplier: Number,
         averagePricePerDay: Number
     },
-    paymentMethod: {type: String, default: "offline"}
+    paymentMethod: {type: String, default: "offline"},
+    pickupLocation: {type: String, default: ""},
+    returnLocation: {type: String, default: ""}
 },{timestamps: true})
 
 const Booking = mongoose.model('Booking', bookingSchema)

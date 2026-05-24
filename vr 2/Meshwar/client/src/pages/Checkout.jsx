@@ -18,6 +18,8 @@ const Checkout = () => {
     const [billingCycle, setBillingCycle] = useState('monthly')
     const [paymentMethod, setPaymentMethod] = useState('Credit Card')
     const [selectedPlan, setSelectedPlan] = useState('standard')
+    const [pickupLocation, setPickupLocation] = useState('')
+    const [returnLocation, setReturnLocation] = useState('')
 
     const [formData, setFormData] = useState({
         email: '', name: '', address: '', city: '', zip: '', cardNumber: '', expiry: '', cvc: '', phone: ''
@@ -131,7 +133,7 @@ const Checkout = () => {
         await new Promise(r => setTimeout(r, 1500))
         try {
             const endpoint = isPremiumCheckout ? '/api/user/upgrade-premium' : '/api/bookings/create'
-            const payload = isPremiumCheckout ? { paymentMethod: method, billingCycle, plan: selectedPlan } : { car: id, pickupDate, returnDate, paymentMethod: method }
+            const payload = isPremiumCheckout ? { paymentMethod: method, billingCycle, plan: selectedPlan } : { car: id, pickupDate, returnDate, paymentMethod: method, pickupLocation, returnLocation }
             const { data } = await axios.post(endpoint, payload, { headers: { Authorization: token } })
             if (data.success) {
                 setSuccess(true)
@@ -193,9 +195,64 @@ const Checkout = () => {
                             </section>
                         )}
 
+                        {/* Pickup & Return Location — Step 1 (car bookings only) */}
+                        {!isPremiumCheckout && (
+                            <section className='space-y-6'>
+                                <div className='flex items-center gap-3'>
+                                    <div className='w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-sm font-bold'>1</div>
+                                    <h2 className='text-xl font-bold text-gray-900'>Pickup & Return Location</h2>
+                                </div>
+
+                                <div className='bg-white border border-gray-200 rounded-3xl p-8 shadow-sm space-y-5'>
+                                    <p className='text-sm text-gray-500 font-medium'>Propose where you'd like to pick up and return the car. The owner will review your proposed locations.</p>
+
+                                    {/* Pickup Location */}
+                                    <div className='relative'>
+                                        <div className='absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none'>
+                                            <svg className='w-5 h-5' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                                                <path strokeLinecap='round' strokeLinejoin='round' d='M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' />
+                                                <path strokeLinecap='round' strokeLinejoin='round' d='M15 11a3 3 0 11-6 0 3 3 0 016 0z' />
+                                            </svg>
+                                        </div>
+                                        <input
+                                            type='text'
+                                            required
+                                            value={pickupLocation}
+                                            onChange={e => setPickupLocation(e.target.value)}
+                                            placeholder='Pickup: e.g. Mall of Arabia — Parking B'
+                                            className='w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none text-sm font-semibold transition-all placeholder:font-medium placeholder:text-gray-400'
+                                        />
+                                    </div>
+
+                                    {/* Return Location */}
+                                    <div className='relative'>
+                                        <div className='absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none'>
+                                            <svg className='w-5 h-5' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'>
+                                                <path strokeLinecap='round' strokeLinejoin='round' d='M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z' />
+                                                <path strokeLinecap='round' strokeLinejoin='round' d='M15 11a3 3 0 11-6 0 3 3 0 016 0z' />
+                                            </svg>
+                                        </div>
+                                        <input
+                                            type='text'
+                                            required
+                                            value={returnLocation}
+                                            onChange={e => setReturnLocation(e.target.value)}
+                                            placeholder='Return: e.g. Cairo Airport — Terminal 2'
+                                            className='w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none text-sm font-semibold transition-all placeholder:font-medium placeholder:text-gray-400'
+                                        />
+                                    </div>
+
+                                    <div className='flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100'>
+                                        <svg className='w-4 h-4 text-amber-500 shrink-0 mt-0.5' fill='none' stroke='currentColor' strokeWidth='2' viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' /></svg>
+                                        <p className='text-xs text-amber-700 font-semibold'>The car owner will review your proposed locations when approving your booking.</p>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
                         <section className='space-y-6'>
                             <div className='flex items-center gap-3'>
-                                <div className='w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-sm font-bold'>{isPremiumCheckout ? '2' : '1'}</div>
+                                <div className='w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-sm font-bold'>{isPremiumCheckout ? '2' : '2'}</div>
                                 <h2 className='text-xl font-bold text-gray-900'>Payment Method</h2>
                             </div>
 

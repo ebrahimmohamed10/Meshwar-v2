@@ -5,6 +5,7 @@ import Car from "../models/Car.js";
 import imagekit from "../configs/imageKit.js";
 import fs from "fs";
 import OpenAI from "openai";
+import Withdrawal from "../models/Withdrawal.js";
 
 
 // Generate JWT Token
@@ -319,5 +320,74 @@ Return your response ONLY as a JSON object with:
         } catch (e) {}
 
         res.json({ success: false, message: error.message })
+    }
+}
+
+// Withdraw from Wallet (Option 4: Direct Instant)
+export const withdrawWallet = async (req, res) => {
+    try {
+        const { _id } = req.user;
+        const { amount, method, details } = req.body;
+
+        const numAmount = Number(amount);
+        if (isNaN(numAmount) || numAmount <= 0) {
+            return res.json({ success: false, message: "Please enter a valid amount" });
+        }
+
+        // Limit validations
+        if (numAmount < 100) {
+            return res.json({ success: false, message: "Minimum withdrawal limit is 100 EGP" });
+        }
+        if (numAmount > 5000) {
+            return res.json({ success: false, message: "Maximum withdrawal limit per transaction is 5,000 EGP" });
+        }
+
+        if (!method || !details || details.trim() === '') {
+            return res.json({ success: false, message: "Payout method and destination details are required" });
+        }
+
+        const user = await User.findById(_id);
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+
+        if (user.wallet < numAmount) {
+            return res.json({ success: false, message: `Insufficient balance. Current balance: ${user.wallet} EGP` });
+        }
+
+        // Deduct balance and create withdrawal entry
+        user.wallet -= numAmount;
+        await user.save();
+
+        const withdrawal = await Withdrawal.create({
+            user: _id,
+            amount: numAmount,
+            method,
+            details,
+            status: "Completed" // Instant completed for Option 4
+        });
+
+        res.json({
+            success: true,
+            message: "Withdrawal completed successfully!",
+            user: { wallet: user.wallet }, // return updated user wallet
+            withdrawal
+        });
+
+    } catch (error) {
+        console.error("Withdrawal error:", error.message);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Get User Withdrawals
+export const getUserWithdrawals = async (req, res) => {
+    try {
+        const { _id } = req.user;
+        const withdrawals = await Withdrawal.find({ user: _id }).sort({ createdAt: -1 });
+        res.json({ success: true, withdrawals });
+    } catch (error) {
+        console.error("Get withdrawals error:", error.message);
+        res.json({ success: false, message: error.message });
     }
 }

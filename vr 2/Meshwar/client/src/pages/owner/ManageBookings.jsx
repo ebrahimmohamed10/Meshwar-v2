@@ -9,6 +9,9 @@ const ManageBookings = () => {
 
   const { currency, axios, user, isOwner, isPremium } = useAppContext()
   const [bookings, setBookings] = useState([])
+  const [rejectModalBookingId, setRejectModalBookingId] = useState(null)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [rejecting, setRejecting] = useState(false)
 
   const fetchOwnerBookings = async () => {
     try {
@@ -31,9 +34,13 @@ const ManageBookings = () => {
     }
   }, [user, isOwner, isPremium])
 
-  const changeBookingStatus = async (bookingId, status) => {
+  const changeBookingStatus = async (bookingId, status, reason = '') => {
     try {
-      const { data } = await axios.post('/api/bookings/change-status', { bookingId, status })
+      const payload = { bookingId, status }
+      if (status === 'rejected' && reason) {
+        payload.rejectionReason = reason
+      }
+      const { data } = await axios.post('/api/bookings/change-status', payload)
       if (data.success) {
         toast.success(data.message)
         fetchOwnerBookings()
@@ -43,6 +50,15 @@ const ManageBookings = () => {
     } catch (error) {
       toast.error(error.message)
     }
+  }
+
+  const handleReject = async () => {
+    if (!rejectModalBookingId) return
+    setRejecting(true)
+    await changeBookingStatus(rejectModalBookingId, 'rejected', rejectionReason)
+    setRejecting(false)
+    setRejectModalBookingId(null)
+    setRejectionReason('')
   }
 
   useEffect(() => {
@@ -85,6 +101,7 @@ const ManageBookings = () => {
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Car</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Period</th>
+                  <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Locations</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Amount</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Status</th>
@@ -142,6 +159,38 @@ const ManageBookings = () => {
                         </div>
                       </td>
 
+                      {/* Locations */}
+                      <td className="py-4 px-6">
+                        <div className="space-y-2 min-w-[160px]">
+                          {booking.pickupLocation ? (
+                            <>
+                              <div className="flex items-start gap-2">
+                                <svg className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <div>
+                                  <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Pickup</div>
+                                  <div className="text-xs font-medium text-gray-900">{booking.pickupLocation}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <svg className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <div>
+                                  <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Return</div>
+                                  <div className="text-xs font-medium text-gray-900">{booking.returnLocation || booking.pickupLocation}</div>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Not specified</span>
+                          )}
+                        </div>
+                      </td>
+
                       {/* Amount */}
                       <td className="py-4 px-6 whitespace-nowrap text-right">
                         <div className="text-sm font-semibold text-gray-900">
@@ -162,21 +211,21 @@ const ManageBookings = () => {
                       </td>
 
                       {/* Status & Actions */}
-                      <td className="py-4 px-6 whitespace-nowrap text-right flex justify-end">
+                      <td className="py-4 px-6 whitespace-nowrap text-right">
                         {booking.status === 'pending' ? (
-                          <div className="relative">
-                            <select
-                              onChange={e => changeBookingStatus(booking._id, e.target.value)}
-                              value={booking.status}
-                              className="appearance-none bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 font-medium text-xs rounded-md pl-3 pr-7 py-1.5 outline-none cursor-pointer hover:bg-amber-100 transition-colors focus:ring-2 focus:ring-amber-500"
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => changeBookingStatus(booking._id, 'confirmed')}
+                              className="px-3 py-1.5 bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 font-medium text-xs rounded-md hover:bg-emerald-100 transition-colors cursor-pointer"
                             >
-                              <option value="pending">Pending</option>
-                              <option value="rejected">Reject</option>
-                              <option value="confirmed">Confirm</option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-amber-700">
-                              <svg className="fill-current h-3 w-3" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
-                            </div>
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => { setRejectModalBookingId(booking._id); setRejectionReason(''); }}
+                              className="px-3 py-1.5 bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20 font-medium text-xs rounded-md hover:bg-rose-100 transition-colors cursor-pointer"
+                            >
+                              Reject
+                            </button>
                           </div>
                         ) : (
                           <span className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold
@@ -194,6 +243,55 @@ const ManageBookings = () => {
             </table>
           </div>
         </motion.div>
+      )}
+
+      {/* Rejection Reason Modal */}
+      {rejectModalBookingId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(6px)' }}
+          onClick={() => !rejecting && setRejectModalBookingId(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">Reject Booking</h3>
+              <p className="text-sm text-gray-500 mt-1">Optionally provide a reason or suggest a different location.</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <textarea
+                value={rejectionReason}
+                onChange={e => setRejectionReason(e.target.value)}
+                placeholder="e.g. I can't meet at that location. Please try Downtown Cairo or Maadi."
+                rows={3}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-rose-400 focus:ring-4 focus:ring-rose-400/10 outline-none text-sm font-medium transition-all resize-none placeholder:text-gray-400"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setRejectModalBookingId(null)}
+                  disabled={rejecting}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={rejecting}
+                  className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:bg-rose-600 transition-all disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {rejecting ? (
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
+                  ) : null}
+                  {rejecting ? 'Rejecting...' : 'Reject Booking'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   )
