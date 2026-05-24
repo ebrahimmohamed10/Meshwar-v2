@@ -14,6 +14,68 @@ const maskCardDetails = (details) => {
         })
 }
 
+const showMinBalanceToast = (balance) => {
+    toast.custom((t) => (
+        <div
+            className={`${
+                t.visible ? 'animate-enter' : 'animate-leave'
+            } max-w-sm w-full bg-white shadow-2xl rounded-3xl pointer-events-auto flex ring-1 ring-black/5 p-5 border border-rose-50/80`}
+        >
+            <div className="flex items-start gap-4 w-full">
+                <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 shrink-0">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div className="flex-1 space-y-0.5 text-left">
+                    <h4 className="text-sm font-black text-gray-900 tracking-tight">Withdrawal Restricted</h4>
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Required: 1,000 EGP</p>
+                    <p className="text-xs text-gray-500 font-semibold leading-relaxed pt-1">
+                        A minimum balance of 1,000 EGP is required to request a payout. Your current balance is {balance?.toLocaleString()} EGP.
+                    </p>
+                </div>
+                <button
+                    onClick={() => toast.dismiss(t.id)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 hover:bg-gray-50 rounded-full shrink-0 cursor-pointer"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+    ), { id: 'min-balance-error', duration: 4000 });
+};
+
+const showDailyLimitToast = () => {
+    toast.custom((t) => (
+        <div
+            className={`${
+                t.visible ? 'animate-enter' : 'animate-leave'
+            } max-w-sm w-full bg-white shadow-2xl rounded-3xl pointer-events-auto flex ring-1 ring-black/5 p-5 border border-rose-50/80`}
+        >
+            <div className="flex items-start gap-4 w-full">
+                <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 shrink-0">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div className="flex-1 space-y-0.5 text-left">
+                    <h4 className="text-sm font-black text-gray-900 tracking-tight">Withdrawal Limit Reached</h4>
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Limit: 1 Payout / Day</p>
+                    <p className="text-xs text-gray-500 font-semibold leading-relaxed pt-1">
+                        You can only make one withdrawal request per day. Please try again tomorrow.
+                    </p>
+                </div>
+                <button
+                    onClick={() => toast.dismiss(t.id)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 hover:bg-gray-50 rounded-full shrink-0 cursor-pointer"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+    ), { id: 'daily-limit-error', duration: 4000 });
+};
+
 const OwnerWallet = () => {
     const { user, currency, axios, fetchUser } = useAppContext()
     const [bookings, setBookings] = useState([])
@@ -64,6 +126,14 @@ const OwnerWallet = () => {
         .filter(b => b.status === 'pending')
         .reduce((sum, b) => sum + (b.price || 0), 0)
 
+    const handleWithdrawClick = () => {
+        if (user.ownerWallet < 1000) {
+            showMinBalanceToast(user.ownerWallet);
+            return;
+        }
+        setShowWithdrawModal(true);
+    };
+
     return (
         <div className='px-4 pt-10 md:px-10 flex-1 min-h-screen bg-[#F9FAFB] pb-12 relative'>
             <div className='max-w-5xl mx-auto'>
@@ -76,7 +146,7 @@ const OwnerWallet = () => {
                     </div>
                     {/* Withdraw Button */}
                     <button
-                        onClick={() => setShowWithdrawModal(true)}
+                        onClick={handleWithdrawClick}
                         className='px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-md shadow-emerald-600/10 flex items-center gap-2 cursor-pointer'
                     >
                         <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4-4m0 0l-4-4m4 4H3m14 4h2a2 2 0 0 0 2 2v6a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-6a2 2 0 0 0 2-2h2"/></svg>
@@ -255,6 +325,7 @@ const OwnerWallet = () => {
                 {showWithdrawModal && (
                     <WithdrawalModal
                         user={user}
+                        withdrawals={withdrawals}
                         currency={currency}
                         onClose={() => setShowWithdrawModal(false)}
                         onSuccess={async () => {
@@ -446,7 +517,7 @@ const WithdrawalDetailModal = ({ withdrawal, currency, onClose }) => {
     )
 }
 
-const WithdrawalModal = ({ user, currency, onClose, onSuccess, axios }) => {
+const WithdrawalModal = ({ user, withdrawals, currency, onClose, onSuccess, axios }) => {
     const [amount, setAmount] = useState('')
     const [method, setMethod] = useState('Vodafone Cash')
     const [details, setDetails] = useState('')
@@ -480,6 +551,10 @@ const WithdrawalModal = ({ user, currency, onClose, onSuccess, axios }) => {
     const handleSubmit = async (e) => {
         e.preventDefault()
         const numAmount = Number(amount)
+        if (user.ownerWallet < 1000) {
+            showMinBalanceToast(user.ownerWallet)
+            return
+        }
         if (!amount || isNaN(numAmount) || numAmount <= 0) {
             toast.error("Please enter a valid amount")
             return

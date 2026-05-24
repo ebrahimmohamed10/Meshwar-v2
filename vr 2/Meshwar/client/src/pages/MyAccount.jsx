@@ -216,34 +216,75 @@ const MyAccount = () => {
                     )}
 
                     {verificationStatus === 'unverified' && (
-                        <div className='space-y-6'>
-                            <div className='flex flex-col md:flex-row items-start md:items-center justify-between gap-6'>
-                                <div className='flex items-start gap-4'>
-                                    <div className='p-3 bg-gray-50 text-gray-500 rounded-2xl border border-gray-200'>
-                                        <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        <div className='space-y-0'>
+                            {/* Main verification card with gradient */}
+                            <div className='relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-800 via-emerald-700 to-teal-700 p-8 md:p-10'>
+                                {/* Decorative background elements */}
+                                <div className='absolute top-0 right-0 w-64 h-64 bg-emerald-300/15 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none' />
+                                <div className='absolute bottom-0 left-0 w-48 h-48 bg-primary/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none' />
+                                
+                                <div className='relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6'>
+                                    <div className='flex items-start gap-5'>
+                                        {/* Shield icon */}
+                                        <div className='relative'>
+                                            <div className='absolute inset-0 bg-primary/30 rounded-2xl blur-xl' />
+                                            <div className='relative p-4 bg-gradient-to-br from-primary to-emerald-400 rounded-2xl shadow-lg shadow-primary/25'>
+                                                <svg width="28" height="28" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h3 className='text-xl font-bold text-white'>Verify Your Identity</h3>
+                                            <p className='text-emerald-300/70 text-sm mt-1.5 max-w-md leading-relaxed'>
+                                                Complete a quick identity check to unlock full access — book any car, earn trust badges, and enjoy faster checkouts.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <motion.button
+                                        whileHover={isReadyForVerification ? { scale: 1.04 } : {}}
+                                        whileTap={isReadyForVerification ? { scale: 0.96 } : {}}
+                                        onClick={handleVerifyProfile}
+                                        disabled={!isReadyForVerification}
+                                        className={`shrink-0 text-xs font-black uppercase tracking-wider px-8 py-3.5 rounded-xl transition-all cursor-pointer flex items-center gap-2.5 ${isReadyForVerification ? 'bg-gradient-to-r from-primary to-emerald-400 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40' : 'bg-white/10 text-emerald-700 cursor-not-allowed border border-white/10'}`}
+                                    >
+                                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
                                         </svg>
-                                    </div>
-                                    <div>
-                                        <h3 className='text-lg font-bold text-gray-900'>Automatic Identity Verification</h3>
-                                        <p className='text-gray-500 text-sm mt-0.5'>Submit your details and documents to get verified automatically via AI.</p>
-                                    </div>
+                                        Start Verification
+                                    </motion.button>
                                 </div>
-                                <button 
-                                    onClick={handleVerifyProfile}
-                                    disabled={!isReadyForVerification}
-                                    className={`text-xs font-black uppercase tracking-wider px-8 py-3 rounded-xl shadow-md transition-all cursor-pointer ${isReadyForVerification ? 'bg-primary text-white hover:bg-primary/95 hover:shadow-lg' : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'}`}
-                                >
-                                    Verify Profile with AI
-                                </button>
                             </div>
+
+                            {/* Requirements checklist */}
                             {!isReadyForVerification && (
-                                <div className='p-4 bg-slate-50 border border-slate-200/60 rounded-2xl text-xs text-gray-500 font-medium flex flex-col gap-1.5'>
-                                    <p className='font-bold text-gray-700'>To request verification, please complete the following steps:</p>
-                                    <ul className='list-disc pl-5 space-y-1'>
-                                        {!hasAllDetails && <li>Provide your Full Name, Date of Birth, National ID / Passport, and Driving License Number in your profile details.</li>}
-                                        {!hasAllDocs && <li>Upload all four verification assets (ID Front, ID Back, License Front, License Back) in the section below.</li>}
-                                    </ul>
+                                <div className='mt-5 p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl'>
+                                    <div className='flex items-center gap-2.5 mb-4'>
+                                        <div className='p-1.5 bg-amber-100 rounded-lg'>
+                                            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className='text-amber-600'>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                            </svg>
+                                        </div>
+                                        <p className='text-sm font-bold text-amber-800'>Almost there! Complete these steps first:</p>
+                                    </div>
+                                    <div className='space-y-3 pl-1'>
+                                        {!hasAllDetails && (
+                                            <div className='flex items-start gap-3'>
+                                                <div className='mt-0.5 w-5 h-5 rounded-full border-2 border-amber-300 bg-white flex items-center justify-center shrink-0'>
+                                                    <span className='text-[10px] font-black text-amber-500'>1</span>
+                                                </div>
+                                                <p className='text-sm text-amber-900/80 font-medium'>Fill in your <span className='font-bold text-amber-900'>Full Name</span>, <span className='font-bold text-amber-900'>Date of Birth</span>, <span className='font-bold text-amber-900'>National ID</span>, and <span className='font-bold text-amber-900'>License Number</span> in your profile.</p>
+                                            </div>
+                                        )}
+                                        {!hasAllDocs && (
+                                            <div className='flex items-start gap-3'>
+                                                <div className='mt-0.5 w-5 h-5 rounded-full border-2 border-amber-300 bg-white flex items-center justify-center shrink-0'>
+                                                    <span className='text-[10px] font-black text-amber-500'>{!hasAllDetails ? '2' : '1'}</span>
+                                                </div>
+                                                <p className='text-sm text-amber-900/80 font-medium'>Upload all 4 documents — <span className='font-bold text-amber-900'>ID Front & Back</span> and <span className='font-bold text-amber-900'>License Front & Back</span> in the section below.</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

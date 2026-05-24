@@ -20,6 +20,8 @@ const Checkout = () => {
     const [selectedPlan, setSelectedPlan] = useState('standard')
     const [pickupLocation, setPickupLocation] = useState('')
     const [returnLocation, setReturnLocation] = useState('')
+    const [calculatedPrice, setCalculatedPrice] = useState(null)
+    const [isCalculating, setIsCalculating] = useState(false)
 
     const [formData, setFormData] = useState({
         email: '', name: '', address: '', city: '', zip: '', cardNumber: '', expiry: '', cvc: '', phone: ''
@@ -107,6 +109,32 @@ const Checkout = () => {
         }
     }, [cars, id, pickupDate, returnDate, navigate, isPremiumCheckout, billingCycle, selectedPlan, user, token])
 
+    useEffect(() => {
+        const fetchPrice = async () => {
+            if (!isPremiumCheckout && car && pickupDate && returnDate) {
+                setIsCalculating(true);
+                try {
+                    const { data } = await axios.post('/api/pricing/calculate', {
+                        carId: id,
+                        pickupDate,
+                        returnDate
+                    });
+                    if (data.success) {
+                        setCalculatedPrice(data.pricing);
+                    }
+                } catch (error) {
+                    console.error("Error calculating price in Checkout:", error);
+                } finally {
+                    setIsCalculating(false);
+                }
+            } else {
+                setCalculatedPrice(null);
+            }
+        };
+
+        fetchPrice();
+    }, [isPremiumCheckout, car, pickupDate, returnDate, id, axios]);
+
     const days = isPremiumCheckout ? 1 : (() => {
         if (!pickupDate || !returnDate) return 0
         const start = new Date(pickupDate)
@@ -115,7 +143,12 @@ const Checkout = () => {
         return diff === 0 ? 1 : diff
     })()
 
-    const total = car ? (isPremiumCheckout ? car.pricePerDay : car.pricePerDay * days) : 0
+    const total = car 
+        ? (isPremiumCheckout 
+            ? car.pricePerDay 
+            : (calculatedPrice ? calculatedPrice.totalPrice : car.pricePerDay * days)
+          ) 
+        : 0;
     const taxes = isPremiumCheckout ? 0 : Math.round(total * 0.1)
     const grandTotal = total + taxes
 
@@ -284,7 +317,7 @@ const Checkout = () => {
                                             </div>
                                         </div>
                                         <div className="pt-2">
-                                            <SubmitBtn loading={loading} success={success} total={grandTotal} currency={currency} />
+                                            <SubmitBtn loading={loading} success={success} total={grandTotal} currency={currency} isPremium={isPremiumCheckout} disabled={isCalculating} />
                                         </div>
                                     </motion.form>
                                 )}
@@ -300,7 +333,7 @@ const Checkout = () => {
                                             <p className="text-sm font-semibold text-gray-500">Enter your registered mobile number</p>
                                             <input type="tel" name="phone" required value={formData.phone} onChange={handleInputChange} className='w-full max-w-sm mx-auto block px-6 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none text-center font-bold text-xl tracking-widest transition-all' placeholder='01X XXXX XXXX' />
                                         </div>
-                                        <SubmitBtn onClick={() => handlePayment(null, paymentMethod)} loading={loading} success={success} total={grandTotal} currency={currency} />
+                                        <SubmitBtn onClick={() => handlePayment(null, paymentMethod)} loading={loading} success={success} total={grandTotal} currency={currency} isPremium={isPremiumCheckout} disabled={isCalculating} />
                                     </motion.div>
                                 )}
 
@@ -334,7 +367,7 @@ const Checkout = () => {
                                                 <p className='text-sm font-semibold text-red-700'>Insufficient Balance. Please top up your wallet to use this method.</p>
                                             </div>
                                         ) : (
-                                            <SubmitBtn onClick={() => handlePayment(null, 'Wallet')} loading={loading} success={success} total={grandTotal} currency={currency} />
+                                            <SubmitBtn onClick={() => handlePayment(null, 'Wallet')} loading={loading} success={success} total={grandTotal} currency={currency} isPremium={isPremiumCheckout} disabled={isCalculating} />
                                         )}
                                     </motion.div>
                                 )}
@@ -381,7 +414,89 @@ const Checkout = () => {
 
                                     <div className='space-y-4 pt-6 border-t border-gray-200 border-dashed'>
                                         <SummaryRow label={isPremiumCheckout ? "Billing Cycle" : "Duration"} value={isPremiumCheckout ? (billingCycle === 'monthly' ? 'Monthly' : 'Annually') : `${days} Days`} />
-                                        <SummaryRow label={isPremiumCheckout ? "Plan Rate" : "Daily Rate"} value={`${(car.pricePerDay || 0).toLocaleString()} ${currency}`} />
+                                        
+                                        {!isPremiumCheckout && calculatedPrice?.breakdown ? (
+                                            <>
+                                                <SummaryRow label="Base Rate" value={`${(car.pricePerDay * days).toLocaleString()} ${currency}`} />
+                                                
+                                                {calculatedPrice.breakdown.seasonName && (
+                                                    <div className={`flex justify-between items-center text-xs ${calculatedPrice.breakdown.seasonalMultiplier > 1 ? 'text-orange-500' : 'text-green-600'}`}>
+                                                        <span className='flex items-center gap-1.5'>
+                                                            {calculatedPrice.breakdown.seasonalMultiplier > 1 ? '☀️' : '❄️'} {calculatedPrice.breakdown.seasonName}
+                                                        </span>
+                                                        <span className='font-bold'>
+                                                            {calculatedPrice.breakdown.seasonalMultiplier > 1 ? '+' : '-'}{Math.abs(Math.round((calculatedPrice.breakdown.seasonalMultiplier - 1) * 100))}%
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {calculatedPrice.breakdown.demandMultiplier !== 1 && (
+                                                    <div className={`flex justify-between items-center text-xs ${calculatedPrice.breakdown.demandMultiplier > 1 ? 'text-orange-500' : 'text-green-600'}`}>
+                                                        <span className='flex items-center gap-1.5'>
+                                                            {calculatedPrice.breakdown.demandMultiplier > 1 ? '📈' : '📉'} {calculatedPrice.breakdown.demandLabel}
+                                                        </span>
+                                                        <span className='font-bold'>
+                                                            {calculatedPrice.breakdown.demandMultiplier > 1 ? '+' : '-'}{Math.abs(Math.round((calculatedPrice.breakdown.demandMultiplier - 1) * 100))}%
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {calculatedPrice.breakdown.carFeatureMultiplier !== 1 && (
+                                                    <div className='flex justify-between items-center text-xs text-green-600'>
+                                                        <span className='flex items-center gap-1.5'>
+                                                            📉 {calculatedPrice.breakdown.carFeatureLabel}
+                                                        </span>
+                                                        <span className='font-bold'>
+                                                            -{Math.round((1 - calculatedPrice.breakdown.carFeatureMultiplier) * 100)}%
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {calculatedPrice.breakdown.weekendDays > 0 && (
+                                                    <div className='flex justify-between items-center text-xs text-orange-500'>
+                                                        <span className='flex items-center gap-1.5'>
+                                                            📅 Weekend Rate ({calculatedPrice.breakdown.weekendDays} days)
+                                                        </span>
+                                                        <span className='font-bold'>+15%</span>
+                                                    </div>
+                                                )}
+                                                
+                                                {calculatedPrice.breakdown.weekdayDays > 0 && calculatedPrice.breakdown.seasonalMultiplier === 1.0 && calculatedPrice.breakdown.demandMultiplier <= 1.0 && (
+                                                    <div className='flex justify-between items-center text-xs text-green-600'>
+                                                        <span className='flex items-center gap-1.5'>
+                                                            📉 Normal Weekday ({calculatedPrice.breakdown.weekdayDays} days)
+                                                        </span>
+                                                        <span className='font-bold'>-20%</span>
+                                                    </div>
+                                                )}
+
+                                                {calculatedPrice.breakdown.durationDiscount !== 1 && (
+                                                    <div className='flex justify-between items-center text-xs text-green-600'>
+                                                        <span className='flex items-center gap-1.5'>
+                                                            📉 Long-Term Discount
+                                                        </span>
+                                                        <span className='font-bold'>-{Math.round((1 - calculatedPrice.breakdown.durationDiscount) * 100)}%</span>
+                                                    </div>
+                                                )}
+
+                                                {calculatedPrice.breakdown.capped && (
+                                                    <div className='flex justify-between items-center text-xs text-blue-600 bg-blue-50/50 p-2 rounded-lg'>
+                                                        <span className='flex items-center gap-1.5 font-semibold'>
+                                                            🛡️ Price Protection Applied
+                                                        </span>
+                                                        <span className='font-bold'>
+                                                            {calculatedPrice.breakdown.capped === "max" ? "Capped at +15%" : "Capped at -15%"}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                
+                                                <div className='h-px bg-gray-100 my-1' />
+                                                <SummaryRow label="Adjusted Subtotal" value={`${calculatedPrice.totalPrice.toLocaleString()} ${currency}`} />
+                                            </>
+                                        ) : (
+                                            <SummaryRow label={isPremiumCheckout ? "Plan Rate" : "Daily Rate"} value={`${(car.pricePerDay || 0).toLocaleString()} ${currency}`} />
+                                        )}
+
                                         {taxes > 0 && <SummaryRow label="Taxes & Fees" value={`${taxes.toLocaleString()} ${currency}`} />}
                                     </div>
                                 </div>
@@ -493,21 +608,21 @@ const SummaryRow = ({ label, value }) => (
     </div>
 )
 
-const SubmitBtn = ({ loading, success, total, currency, onClick }) => (
+const SubmitBtn = ({ loading, success, total, currency, onClick, isPremium, disabled }) => (
     <button
         type={onClick ? 'button' : 'submit'}
         onClick={onClick}
-        disabled={loading || success}
+        disabled={loading || success || disabled}
         className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide text-white transition-all relative overflow-hidden group shadow-lg
             ${success
                 ? 'bg-emerald-600 hover:bg-emerald-700'
                 : 'bg-gray-900 hover:bg-gray-800 shadow-gray-900/20 active:scale-[0.98]'
             }
-            ${loading || success ? 'cursor-default opacity-90' : 'cursor-pointer'}
+            ${loading || success || disabled ? 'cursor-default opacity-90' : 'cursor-pointer'}
         `}
     >
         {/* Subtle shine effect on hover */}
-        {!loading && !success && <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-[30deg] -translate-x-[200%] group-hover:translate-x-[300%] transition-transform duration-1000 ease-in-out" />}
+        {!loading && !success && !disabled && <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-[30deg] -translate-x-[200%] group-hover:translate-x-[300%] transition-transform duration-1000 ease-in-out" />}
 
         <div className='flex items-center justify-center gap-2 relative z-10'>
             {loading ? (
@@ -518,7 +633,7 @@ const SubmitBtn = ({ loading, success, total, currency, onClick }) => (
                 <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             )}
             <span>
-                {loading ? 'Processing Transaction...' : success ? 'Payment Successful' : total ? `Subscribe for ${total.toLocaleString()} ${currency}` : 'Confirm Payment'}
+                {loading ? 'Processing Transaction...' : success ? 'Payment Successful' : total ? (isPremium ? `Subscribe for ${total.toLocaleString()} ${currency}` : `Pay ${total.toLocaleString()} ${currency}`) : 'Confirm Payment'}
             </span>
         </div>
     </button>

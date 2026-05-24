@@ -163,17 +163,14 @@ const Hero = () => {
             </div>
 
             {/* Car image */}
-            {/* Car image */}
-{/* Car image */}
-{/* Car image */}
-            <motion.div className="w-full max-w-[1600px] mx-auto flex justify-center mt-2 md:-mt-10 lg:-mt-16 xl:-mt-24 2xl:-mt-32">
+            <motion.div className="w-full max-w-[1100px] mx-auto flex justify-center items-end mt-4 md:mt-0 pb-8 md:pb-12">
                 <motion.img
                     initial={{ y: 80, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 1, delay: 0.5 }}
                     src={assets.main_car}
                     alt="car"
-                    className='relative z-10 w-[95%] md:w-[950px] lg:w-[1150px] xl:w-[1350px] 2xl:w-[1550px] h-auto object-contain float-anim drop-shadow-2xl'
+                    className='relative z-10 w-[90%] md:w-[700px] lg:w-[840px] xl:w-[950px] 2xl:w-[1050px] h-auto object-contain float-anim drop-shadow-2xl'
                 />
             </motion.div>
         </div>

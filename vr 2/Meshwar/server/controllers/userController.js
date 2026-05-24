@@ -352,8 +352,27 @@ export const withdrawWallet = async (req, res) => {
         }
 
         const balanceField = walletType === 'owner' ? 'ownerWallet' : 'wallet';
+        if (user[balanceField] < 1000) {
+            return res.json({ success: false, message: `A minimum balance of 1,000 EGP is required to withdraw funds. Current balance: ${user[balanceField]} EGP` });
+        }
+
         if (user[balanceField] < numAmount) {
             return res.json({ success: false, message: `Insufficient balance. Current balance: ${user[balanceField]} EGP` });
+        }
+
+        // Check if user has already made a withdrawal in the last 24 hours (only for renter wallet)
+        if (walletType === 'renter') {
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            const existingWithdrawal = await Withdrawal.findOne({
+                user: _id,
+                walletType: 'renter',
+                status: { $ne: "Failed" },
+                createdAt: { $gte: oneDayAgo }
+            });
+
+            if (existingWithdrawal) {
+                return res.json({ success: false, message: "You can only make one withdrawal per day." });
+            }
         }
 
         // Deduct balance and create withdrawal entry
