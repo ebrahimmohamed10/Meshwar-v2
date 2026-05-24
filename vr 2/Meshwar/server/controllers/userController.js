@@ -327,7 +327,7 @@ Return your response ONLY as a JSON object with:
 export const withdrawWallet = async (req, res) => {
     try {
         const { _id } = req.user;
-        const { amount, method, details } = req.body;
+        const { amount, method, details, walletType = 'renter' } = req.body;
 
         const numAmount = Number(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
@@ -351,12 +351,13 @@ export const withdrawWallet = async (req, res) => {
             return res.json({ success: false, message: "User not found" });
         }
 
-        if (user.wallet < numAmount) {
-            return res.json({ success: false, message: `Insufficient balance. Current balance: ${user.wallet} EGP` });
+        const balanceField = walletType === 'owner' ? 'ownerWallet' : 'wallet';
+        if (user[balanceField] < numAmount) {
+            return res.json({ success: false, message: `Insufficient balance. Current balance: ${user[balanceField]} EGP` });
         }
 
         // Deduct balance and create withdrawal entry
-        user.wallet -= numAmount;
+        user[balanceField] -= numAmount;
         await user.save();
 
         const withdrawal = await Withdrawal.create({
@@ -364,13 +365,14 @@ export const withdrawWallet = async (req, res) => {
             amount: numAmount,
             method,
             details,
-            status: "Completed" // Instant completed for Option 4
+            status: "Completed", // Instant completed for Option 4
+            walletType
         });
 
         res.json({
             success: true,
             message: "Withdrawal completed successfully!",
-            user: { wallet: user.wallet }, // return updated user wallet
+            user: { wallet: user.wallet, ownerWallet: user.ownerWallet }, // return updated user wallet
             withdrawal
         });
 
@@ -384,7 +386,14 @@ export const withdrawWallet = async (req, res) => {
 export const getUserWithdrawals = async (req, res) => {
     try {
         const { _id } = req.user;
-        const withdrawals = await Withdrawal.find({ user: _id }).sort({ createdAt: -1 });
+        const { walletType } = req.query;
+
+        const filter = { user: _id };
+        if (walletType) {
+            filter.walletType = walletType;
+        }
+
+        const withdrawals = await Withdrawal.find(filter).sort({ createdAt: -1 });
         res.json({ success: true, withdrawals });
     } catch (error) {
         console.error("Get withdrawals error:", error.message);

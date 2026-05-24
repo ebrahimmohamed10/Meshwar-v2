@@ -229,7 +229,12 @@ export const changeBookingStatus = async (req, res) => {
             }
         }
 
-        if (status === 'confirmed') {
+        if (status === 'confirmed' && booking.status !== 'confirmed') {
+            // Credit the owner's wallet (applies to all online/wallet payment methods)
+            if (booking.paymentMethod !== 'offline') {
+                await User.findByIdAndUpdate(booking.owner, { $inc: { ownerWallet: booking.price } });
+            }
+
             // Automatically cancel and refund ALL other bookings (pending OR confirmed) that overlap with this new confirmation
             const conflictingBookings = await Booking.find({
                 _id: { $ne: bookingId },

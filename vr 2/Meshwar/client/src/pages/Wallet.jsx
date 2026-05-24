@@ -28,7 +28,7 @@ const Wallet = () => {
         try {
             const [bookingsRes, withdrawalsRes] = await Promise.all([
                 axios.get('/api/bookings/user'),
-                axios.get('/api/user/withdrawals')
+                axios.get('/api/user/withdrawals?walletType=renter')
             ])
             if (bookingsRes.data.success) {
                 setBookings(bookingsRes.data.bookings)
@@ -530,7 +530,8 @@ const WithdrawalModal = ({ user, currency, onClose, onSuccess, axios }) => {
             const { data } = await axios.post('/api/user/withdraw', {
                 amount: numAmount,
                 method,
-                details: finalDetails
+                details: finalDetails,
+                walletType: 'renter'
             })
             if (data.success) {
                 toast.success(data.message || "Withdrawal completed successfully!")

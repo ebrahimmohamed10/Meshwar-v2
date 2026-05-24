@@ -18,6 +18,8 @@ import dashboardIconColored from "./dashboardIconColored.svg"
 import addIconColored from "./addIconColored.svg"
 import listIcon from "./listIcon.svg"
 import listIconColored from "./listIconColored.svg"
+import walletIcon from "./walletIcon.svg"
+import walletIconColored from "./walletIconColored.svg"
 import cautionIconColored from "./cautionIconColored.svg"
 import arrow_icon from "./arrow_icon.svg"
 import star_icon from "./star_icon.svg"
@@ -89,7 +91,9 @@ export const assets = {
     user_profile,
     car_image2,
     car_image3,
-    car_image4
+    car_image4,
+    walletIcon,
+    walletIconColored
 }
 
 export const menuLinks = [
@@ -105,6 +109,7 @@ export const ownerMenuLinks = [
     { name: "Add car", path: "/owner/add-car", icon: addIcon, coloredIcon: addIconColored },
     { name: "Manage Cars", path: "/owner/manage-cars", icon: carIcon, coloredIcon: carIconColored },
     { name: "Manage Bookings", path: "/owner/manage-bookings", icon: listIcon, coloredIcon: listIconColored },
+    { name: "Wallet", path: "/owner/wallet", icon: walletIcon, coloredIcon: walletIconColored },
 ]
 
 export const dummyUserData = {

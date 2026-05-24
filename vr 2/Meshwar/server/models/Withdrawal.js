@@ -5,7 +5,8 @@ const withdrawalSchema = new mongoose.Schema({
     amount: { type: Number, required: true },
     method: { type: String, required: true }, // e.g. "Vodafone Cash", "InstaPay", "Bank Transfer"
     details: { type: String, required: true }, // phone number, IPA address, or bank account info
-    status: { type: String, enum: ["Pending", "Completed", "Failed"], default: "Completed" }
+    status: { type: String, enum: ["Pending", "Completed", "Failed"], default: "Completed" },
+    walletType: { type: String, enum: ["renter", "owner"], default: "renter" }
 }, { timestamps: true });
 
 const Withdrawal = mongoose.model('Withdrawal', withdrawalSchema);

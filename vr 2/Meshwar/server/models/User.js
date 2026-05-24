@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
     verificationError: { type: String, default: '' },
     isPremium: { type: Boolean, default: false },
     wallet: { type: Number, default: 0 },
+    ownerWallet: { type: Number, default: 0 },
 }, { timestamps: true })
 
 const User = mongoose.model('User', userSchema)

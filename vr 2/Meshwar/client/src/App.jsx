@@ -14,6 +14,7 @@ import Dashboard from './pages/owner/Dashboard'
 import AddCar from './pages/owner/AddCar'
 import ManageCars from './pages/owner/ManageCars'
 import ManageBookings from './pages/owner/ManageBookings'
+import OwnerWallet from './pages/owner/Wallet'
 import Login from './components/Login'
 import ChatBot from './components/ChatBot'
 import { Toaster } from 'react-hot-toast'
@@ -58,6 +59,7 @@ const App = () => {
             <Route path="add-car" element={<AddCar />} />
             <Route path="manage-cars" element={<ManageCars />} />
             <Route path="manage-bookings" element={<ManageBookings />} />
+            <Route path="wallet" element={<OwnerWallet />} />
           </Route>
 
           <Route path='/admin' element={<AdminLayout />}>
