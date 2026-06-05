@@ -29,6 +29,8 @@ const userSchema = new mongoose.Schema({
     isPremium: { type: Boolean, default: false },
     wallet: { type: Number, default: 0 },
     ownerWallet: { type: Number, default: 0 },
+    resetCode: { type: String, default: null },
+    resetCodeExpiry: { type: Date, default: null },
 }, { timestamps: true })
 
 const User = mongoose.model('User', userSchema)

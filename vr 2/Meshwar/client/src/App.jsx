@@ -16,9 +16,11 @@ import ManageCars from './pages/owner/ManageCars'
 import ManageBookings from './pages/owner/ManageBookings'
 import OwnerWallet from './pages/owner/Wallet'
 import Login from './components/Login'
+import LogoutOverlay from './components/LogoutOverlay'
 import ChatBot from './components/ChatBot'
 import { Toaster } from 'react-hot-toast'
 import { useAppContext } from './context/AppContext'
+import { AnimatePresence } from 'motion/react'
 import AdminDashboard from './pages/AdminDashboard'
 import ManageUsers from './pages/ManageUsers'
 
@@ -29,7 +31,7 @@ import AdminLayout from './pages/AdminLayout'
 
 const App = () => {
 
-  const { showLogin } = useAppContext()
+  const { showLogin, isLoggingOut } = useAppContext()
   const location = useLocation()
   const isOwnerPath = location.pathname.startsWith('/owner')
   const isAdminPath = location.pathname.startsWith('/admin')
@@ -41,6 +43,9 @@ const App = () => {
     <>
       <Toaster />
       {showLogin && <Login />}
+      <AnimatePresence>
+        {isLoggingOut && <LogoutOverlay />}
+      </AnimatePresence>
 
       {!hideLayoutElements && <Navbar />}
 

@@ -22,6 +22,7 @@ export const AppProvider = ({ children }) => {
     const [isOwner, setIsOwner] = useState(false)
     const [isPremium, setIsPremium] = useState(false)
     const [showLogin, setShowLogin] = useState(false)
+    const [isLoggingOut, setIsLoggingOut] = useState(false)
     const [pickupDate, setPickupDate] = useState('')
     const [returnDate, setReturnDate] = useState('')
 
@@ -55,13 +56,18 @@ export const AppProvider = ({ children }) => {
 
     // Function to log out the user
     const logout = () => {
-        localStorage.removeItem('token')
-        setToken(null)
-        setUser(null)
-        setIsOwner(false)
-        setIsPremium(false)
-        axios.defaults.headers.common['Authorization'] = ''
-        toast.success('You have been logged out')
+        setIsLoggingOut(true)
+        setTimeout(() => {
+            localStorage.removeItem('token')
+            setToken(null)
+            setUser(null)
+            setIsOwner(false)
+            setIsPremium(false)
+            axios.defaults.headers.common['Authorization'] = ''
+            setIsLoggingOut(false)
+            toast.success('You have been logged out')
+            navigate('/')
+        }, 2000)
     }
 
 
@@ -77,7 +83,7 @@ export const AppProvider = ({ children }) => {
     const value = {
         navigate, currency, axios, user, setUser,
         token, setToken, isOwner, setIsOwner, isPremium, setIsPremium, fetchUser, showLogin, setShowLogin, logout, fetchCars, cars, setCars,
-        pickupDate, setPickupDate, returnDate, setReturnDate
+        pickupDate, setPickupDate, returnDate, setReturnDate, isLoggingOut
     }
 
     return (

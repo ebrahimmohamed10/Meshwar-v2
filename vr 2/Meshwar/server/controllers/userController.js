@@ -17,9 +17,9 @@ const generateToken = (userId) => {
 // Register User
 export const registerUser = async (req, res) => {
     try {
-        const { name, email, password } = req.body
+        const { name, email, password, phone, role } = req.body
 
-        if (!name || !email || !password || password.length < 8) {
+        if (!name || !email || !password || !phone || password.length < 8) {
             return res.json({ success: false, message: 'Fill all the fields' })
         }
 
@@ -29,7 +29,13 @@ export const registerUser = async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10)
-        const user = await User.create({ name, email, password: hashedPassword })
+        const user = await User.create({ 
+            name, 
+            email, 
+            password: hashedPassword, 
+            phone, 
+            role: role || 'user' 
+        })
         const token = generateToken(user._id.toString())
         res.json({ success: true, token })
 
@@ -416,6 +422,77 @@ export const getUserWithdrawals = async (req, res) => {
         res.json({ success: true, withdrawals });
     } catch (error) {
         console.error("Get withdrawals error:", error.message);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Forgot Password - Send Code
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.json({ success: false, message: "Email is required" });
+        }
+
+        const user = await User.findOne({ email: new RegExp('^' + email.trim() + '$', 'i') });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+
+        // Generate 6-digit random code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Expiry set to 15 minutes from now
+        const expiry = new Date(Date.now() + 15 * 60 * 1000);
+
+        user.resetCode = code;
+        user.resetCodeExpiry = expiry;
+        await user.save();
+
+        console.log(`[Forgot Password] Verification code for ${email} is: ${code}`);
+
+        // Return code in response for testing/mock purposes so the user can easily see it
+        res.json({ success: true, message: "Verification code sent!", code });
+    } catch (error) {
+        console.error("Forgot password error:", error.message);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Reset Password
+export const resetPassword = async (req, res) => {
+    try {
+        const { email, code, newPassword } = req.body;
+        if (!email || !code || !newPassword) {
+            return res.json({ success: false, message: "All fields are required" });
+        }
+        if (newPassword.length < 8) {
+            return res.json({ success: false, message: "Password must be at least 8 characters" });
+        }
+
+        const user = await User.findOne({ email: new RegExp('^' + email.trim() + '$', 'i') });
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+
+        if (!user.resetCode || user.resetCode !== code) {
+            return res.json({ success: false, message: "Invalid verification code" });
+        }
+
+        if (new Date() > user.resetCodeExpiry) {
+            return res.json({ success: false, message: "Verification code expired" });
+        }
+
+        // Hash and save new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        user.resetCode = null;
+        user.resetCodeExpiry = null;
+        await user.save();
+
+        res.json({ success: true, message: "Password updated successfully!" });
+    } catch (error) {
+        console.error("Reset password error:", error.message);
         res.json({ success: false, message: error.message });
     }
 }
