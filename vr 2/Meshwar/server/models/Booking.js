@@ -19,7 +19,10 @@ const bookingSchema = new mongoose.Schema({
     },
     paymentMethod: {type: String, default: "offline"},
     pickupLocation: {type: String, default: ""},
-    returnLocation: {type: String, default: ""}
+    returnLocation: {type: String, default: ""},
+    handoverPin: {type: String, default: null},
+    handoverVerified: {type: Boolean, default: false},
+    handoverVerifiedAt: {type: Date, default: null}
 },{timestamps: true})
 
 const Booking = mongoose.model('Booking', bookingSchema)

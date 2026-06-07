@@ -12,6 +12,8 @@ const ManageBookings = () => {
   const [rejectModalBookingId, setRejectModalBookingId] = useState(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [rejecting, setRejecting] = useState(false)
+  const [pinInputs, setPinInputs] = useState({})         // { bookingId: '1234' }
+  const [verifyingPin, setVerifyingPin] = useState(null) // bookingId currently being verified
 
   const fetchOwnerBookings = async () => {
     try {
@@ -61,6 +63,29 @@ const ManageBookings = () => {
     setRejectionReason('')
   }
 
+  const handleVerifyPin = async (bookingId) => {
+    const pin = (pinInputs[bookingId] || '').trim()
+    if (pin.length !== 4) {
+      toast.error('يرجى إدخال رمز PIN المكون من 4 أرقام كاملاً')
+      return
+    }
+    setVerifyingPin(bookingId)
+    try {
+      const { data } = await axios.post('/api/bookings/verify-pin', { bookingId, pin })
+      if (data.success) {
+        toast.success(data.message)
+        fetchOwnerBookings()
+        setPinInputs(prev => { const n = { ...prev }; delete n[bookingId]; return n })
+      } else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setVerifyingPin(null)
+    }
+  }
+
   useEffect(() => {
     fetchOwnerBookings()
   }, [])
@@ -104,7 +129,7 @@ const ManageBookings = () => {
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Locations</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Amount</th>
                   <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
-                  <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Status</th>
+                  <th className="py-3 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Status / Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -227,10 +252,65 @@ const ManageBookings = () => {
                               Reject
                             </button>
                           </div>
+                        ) : booking.status === 'confirmed' && !booking.handoverVerified ? (
+                          // ── PIN input for handover verification ──
+                          <div className="flex flex-col items-end gap-2 min-w-[190px]">
+                            <div className="flex items-center gap-1.5">
+                              {/* 4 individual digit boxes */}
+                              {[0, 1, 2, 3].map(i => (
+                                <input
+                                  key={i}
+                                  id={`pin-${booking._id}-${i}`}
+                                  type="text"
+                                  inputMode="numeric"
+                                  maxLength={1}
+                                  value={(pinInputs[booking._id] || '')[i] || ''}
+                                  onChange={e => {
+                                    const val = e.target.value.replace(/\D/g, '')
+                                    const current = (pinInputs[booking._id] || '').split('')
+                                    current[i] = val
+                                    const next = current.join('').slice(0, 4)
+                                    setPinInputs(prev => ({ ...prev, [booking._id]: next }))
+                                    // auto-focus next
+                                    if (val && i < 3) {
+                                      document.getElementById(`pin-${booking._id}-${i + 1}`)?.focus()
+                                    }
+                                  }}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Backspace' && !(pinInputs[booking._id] || '')[i] && i > 0) {
+                                      document.getElementById(`pin-${booking._id}-${i - 1}`)?.focus()
+                                    }
+                                  }}
+                                  className="w-9 h-10 text-center text-sm font-black text-emerald-700 border-2 border-emerald-200 rounded-lg bg-emerald-50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                                />
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => handleVerifyPin(booking._id)}
+                              disabled={verifyingPin === booking._id}
+                              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:opacity-60 cursor-pointer"
+                              style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}
+                            >
+                              {verifyingPin === booking._id ? (
+                                <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              )}
+                              {verifyingPin === booking._id ? 'جارٍ التحقق...' : 'بدء التأجير وتحصيل الأرباح'}
+                            </button>
+                            <p className="text-[10px] text-gray-400 font-medium text-right leading-tight">أدخل رمز PIN المستخدم لبدء التأجير</p>
+                          </div>
+                        ) : booking.status === 'confirmed' && booking.handoverVerified ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                              <svg className='w-3 h-3' fill='none' stroke='currentColor' strokeWidth={3} viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/></svg>
+                              تم التسليم
+                            </span>
+                            <p className="text-[10px] text-gray-400 font-medium">تم تحصيل الأرباح</p>
+                          </div>
                         ) : (
                           <span className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold
-                            ${booking.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20' :
-                              'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/10'}`}>
+                            ${'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/10'}`}>
                             {booking.status ? booking.status.charAt(0).toUpperCase() + booking.status.slice(1) : 'Unknown'}
                           </span>
                         )}

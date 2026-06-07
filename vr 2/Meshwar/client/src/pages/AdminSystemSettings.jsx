@@ -1,17 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAppContext } from '../context/AppContext';
 
 const AdminSystemSettings = () => {
+  const { axios } = useAppContext();
   const [activeTab, setActiveTab] = useState('general');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleSave = () => {
+  // Financial settings state
+  const [commissionRate, setCommissionRate] = useState(10); // stored as percentage (10 = 10%)
+  const [minWithdrawal, setMinWithdrawal] = useState(1000);
+
+  // Load settings from DB on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const { data } = await axios.get('/api/admin/settings');
+        if (data.success) {
+          setCommissionRate(Math.round(data.settings.commissionRate * 100)); // convert 0.10 -> 10
+          setMinWithdrawal(data.settings.minWithdrawalAmount);
+        }
+      } catch (e) {
+        // silently use defaults
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const handleSave = async () => {
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      const rate = Number(commissionRate);
+      if (isNaN(rate) || rate < 0 || rate > 100) {
+        toast.error('نسبة العمولة يجب أن تكون بين 0 و 100');
+        return;
+      }
+      const { data } = await axios.put('/api/admin/settings', {
+        commissionRate: rate / 100, // convert 10 -> 0.10 before saving
+        minWithdrawalAmount: Number(minWithdrawal),
+      });
+      if (data.success) {
+        toast.success('تم حفظ الإعدادات بنجاح!');
+      } else {
+        toast.error(data.message);
+      }
+    } catch (e) {
+      toast.error('حدث خطأ أثناء الحفظ');
+    } finally {
       setIsSaving(false);
-      toast.success("Configuration updated successfully!");
-    }, 800);
+    }
   };
 
   const tabs = [
@@ -113,7 +154,23 @@ const AdminSystemSettings = () => {
                   <div className="space-y-6">
                     <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b pb-2">Revenue & Tax Parameters</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <InputField label="Revenue Commission (%)" value="15" helper="Meshwar's cut from each rental transaction." />
+                      {/* Live commission rate field */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] ml-1">Revenue Commission (%)</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.5}
+                            value={commissionRate}
+                            onChange={e => setCommissionRate(e.target.value)}
+                            className="w-full px-5 py-3.5 bg-gray-50/50 border-2 border-green-200 rounded-2xl text-sm font-black text-green-800 focus:bg-white focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none transition-all"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-green-600">%</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400 ml-1">حصة Meshwar من كل عملية تأجير. تُخصم تلقائياً عند تحقق PIN الاستلام.</p>
+                      </div>
                       <InputField label="Value Added Tax (%)" value="14" helper="Standard government VAT applied to total price." />
                       <InputField label="Booking Cancellation Fee (EGP)" value="150" helper="Fixed penalty charged to customers for late cancels." />
                       <InputField label="Insurance Surcharge (%)" value="5" helper="Optional platform insurance fee per booking." />
@@ -126,10 +183,16 @@ const AdminSystemSettings = () => {
                     </div>
                     <div className="flex-1 text-center md:text-left">
                       <p className="font-black text-green-900 text-lg">Wallet Withdrawal Threshold</p>
-                      <p className="text-sm text-green-700 leading-relaxed">Minimum balance required for owners to request cashout. Setting this higher reduces administrative overhead.</p>
+                      <p className="text-sm text-green-700 leading-relaxed">الحد الأدنى للرصيد المتاح قبل تمكن المالك من طلب سحب.</p>
                       <div className="mt-4 flex items-center justify-center md:justify-start gap-3">
                         <div className="relative">
-                          <input type="text" defaultValue="1,000" className="w-32 pl-4 pr-12 py-2.5 bg-white border-2 border-green-200 rounded-xl text-lg font-black text-green-800 focus:outline-none focus:border-green-500 transition-all shadow-sm" />
+                          <input
+                            type="number"
+                            min={0}
+                            value={minWithdrawal}
+                            onChange={e => setMinWithdrawal(e.target.value)}
+                            className="w-36 pl-4 pr-12 py-2.5 bg-white border-2 border-green-200 rounded-xl text-lg font-black text-green-800 focus:outline-none focus:border-green-500 transition-all shadow-sm"
+                          />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-green-600/50 text-xs">EGP</span>
                         </div>
                         <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Minimum Limit</span>

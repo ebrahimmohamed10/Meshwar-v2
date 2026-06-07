@@ -1,6 +1,7 @@
 import Booking from "../models/Booking.js"
 import Car from "../models/Car.js";
 import User from "../models/User.js";
+import SystemSettings from "../models/SystemSettings.js";
 import { calculateDynamicPrice } from "../utils/pricingEngine.js";
 
 // Function to Check Availability of Car for a given Date
@@ -230,10 +231,10 @@ export const changeBookingStatus = async (req, res) => {
         }
 
         if (status === 'confirmed' && booking.status !== 'confirmed') {
-            // Credit the owner's wallet (applies to all online/wallet payment methods)
-            if (booking.paymentMethod !== 'offline') {
-                await User.findByIdAndUpdate(booking.owner, { $inc: { ownerWallet: booking.price } });
-            }
+            // Generate a 4-digit handover PIN — money transfers ONLY after PIN verification
+            const pin = String(Math.floor(1000 + Math.random() * 9000));
+            booking.handoverPin = pin;
+            booking.handoverVerified = false;
 
             // Automatically cancel and refund ALL other bookings (pending OR confirmed) that overlap with this new confirmation
             const conflictingBookings = await Booking.find({
@@ -298,6 +299,74 @@ export const cancelBooking = async (req, res) => {
         await booking.save();
 
         res.json({ success: true, message: "Booking cancelled successfully" });
+    } catch (error) {
+        console.log(error.message);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// API to verify the handover PIN and release payment to owner
+export const verifyHandoverPin = async (req, res) => {
+    try {
+        const { _id } = req.user;
+        const { bookingId, pin } = req.body;
+
+        if (!bookingId || !pin) {
+            return res.json({ success: false, message: "Booking ID and PIN are required." });
+        }
+
+        const booking = await Booking.findById(bookingId);
+
+        if (!booking) {
+            return res.json({ success: false, message: "Booking not found." });
+        }
+
+        // Only the owner of this booking can verify the PIN
+        if (booking.owner.toString() !== _id.toString()) {
+            return res.json({ success: false, message: "Unauthorized." });
+        }
+
+        if (booking.status !== 'confirmed') {
+            return res.json({ success: false, message: "This booking is not in a confirmed state." });
+        }
+
+        if (booking.handoverVerified) {
+            return res.json({ success: false, message: "This booking has already been verified and payment released." });
+        }
+
+        // Check PIN
+        if (booking.handoverPin !== String(pin).trim()) {
+            return res.json({ success: false, message: "رمز PIN غير صحيح. حاول مرة أخرى." });
+        }
+
+        // PIN is correct — transfer money to owner wallet (minus admin commission)
+        // Read commission rate from SystemSettings (fallback to 10% if not configured)
+        const settings = await SystemSettings.findOne({ key: 'global' });
+        const commissionRate = settings ? settings.commissionRate : 0.10;
+        const commission = Math.round(booking.price * commissionRate);
+        const ownerAmount = booking.price - commission;
+
+        if (booking.paymentMethod !== 'offline') {
+            // Transfer owner's share to ownerWallet (available for withdrawal)
+            await User.findByIdAndUpdate(booking.owner, { $inc: { ownerWallet: ownerAmount } });
+            // Add commission to admin's wallet
+            const adminUser = await User.findOne({ role: 'admin' });
+            if (adminUser) {
+                await User.findByIdAndUpdate(adminUser._id, { $inc: { wallet: commission } });
+            }
+        }
+
+        booking.handoverVerified = true;
+        booking.handoverVerifiedAt = new Date();
+        await booking.save();
+
+        res.json({ 
+            success: true, 
+            message: "تم التحقق بنجاح! تم تحويل الأرباح إلى محفظتك.",
+            ownerAmount,
+            commission
+        });
+
     } catch (error) {
         console.log(error.message);
         res.json({ success: false, message: error.message });

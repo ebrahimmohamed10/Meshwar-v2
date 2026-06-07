@@ -1,5 +1,5 @@
 import express from "express";
-import { changeBookingStatus, checkAvailabilityOfCar, createBooking, getOwnerBookings, getUserBookings, cancelBooking } from "../controllers/bookingController.js";
+import { changeBookingStatus, checkAvailabilityOfCar, createBooking, getOwnerBookings, getUserBookings, cancelBooking, verifyHandoverPin } from "../controllers/bookingController.js";
 import { protect } from "../middleware/auth.js";
 import { getCarBookedDates } from '../controllers/bookingController.js';
 
@@ -12,5 +12,6 @@ bookingRouter.get('/owner', protect, getOwnerBookings)
 bookingRouter.post('/change-status', protect, changeBookingStatus)
 bookingRouter.delete('/cancel/:bookingId', protect, cancelBooking)
 bookingRouter.get('/car-dates/:carId', getCarBookedDates)
+bookingRouter.post('/verify-pin', protect, verifyHandoverPin)
 
 export default bookingRouter;

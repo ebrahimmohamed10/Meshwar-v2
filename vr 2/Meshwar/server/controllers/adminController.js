@@ -1,6 +1,52 @@
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import Car from "../models/Car.js";
+import SystemSettings from "../models/SystemSettings.js";
+
+
+export const getSystemSettings = async (req, res) => {
+  try {
+    // findOneAndUpdate with upsert creates the doc if it doesn't exist yet
+    const settings = await SystemSettings.findOneAndUpdate(
+      { key: 'global' },
+      { $setOnInsert: { key: 'global' } },
+      { upsert: true, new: true }
+    );
+    res.json({ success: true, settings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateSystemSettings = async (req, res) => {
+  try {
+    const { commissionRate, minWithdrawalAmount, currency } = req.body;
+
+    // Validate commission rate (must be between 0 and 1)
+    if (commissionRate !== undefined) {
+      const rate = Number(commissionRate);
+      if (isNaN(rate) || rate < 0 || rate > 1) {
+        return res.json({ success: false, message: "نسبة العمولة يجب أن تكون بين 0 و 1 (مثال: 0.10 تعني 10%)" });
+      }
+    }
+
+    const updated = await SystemSettings.findOneAndUpdate(
+      { key: 'global' },
+      {
+        $set: {
+          ...(commissionRate !== undefined && { commissionRate: Number(commissionRate) }),
+          ...(minWithdrawalAmount !== undefined && { minWithdrawalAmount: Number(minWithdrawalAmount) }),
+          ...(currency !== undefined && { currency }),
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, message: "تم تحديث الإعدادات بنجاح", settings: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 export const getDashboardStats = async (req, res) => {
