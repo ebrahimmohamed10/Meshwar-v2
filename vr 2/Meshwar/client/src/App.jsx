@@ -27,6 +27,7 @@ import ManageUsers from './pages/ManageUsers'
 import AdminManageCars from './pages/AdminManageCars'
 import AdminTotalBookings from './pages/AdminTotalBookings'
 import AdminSystemSettings from './pages/AdminSystemSettings'
+import AdminProfits from './pages/AdminProfits'
 import AdminLayout from './pages/AdminLayout'
 
 const App = () => {
@@ -72,6 +73,7 @@ const App = () => {
             <Route path='users' element={<ManageUsers />} />
             <Route path='cars' element={<AdminManageCars />} />
             <Route path='bookings' element={<AdminTotalBookings />} />
+            <Route path='profits' element={<AdminProfits />} />
             <Route path='settings' element={<AdminSystemSettings />} />
           </Route>
         </Routes>

@@ -194,3 +194,25 @@ export const approveCar = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+export const getProfitsData = async (req, res) => {
+  try {
+    const adminUser = await User.findOne({ role: 'admin' });
+    const currentBalance = adminUser ? adminUser.wallet : 0;
+    
+    // Get all verified bookings that generated commission
+    const profitBookings = await Booking.find({ handoverVerified: true })
+      .populate('car')
+      .populate('user')
+      .populate('owner')
+      .sort({ handoverVerifiedAt: -1, createdAt: -1 });
+      
+    res.status(200).json({
+      success: true,
+      balance: currentBalance,
+      bookings: profitBookings
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
