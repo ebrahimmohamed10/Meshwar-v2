@@ -22,14 +22,21 @@ export const calculatePrice = async (req, res) => {
             const picked = new Date(pickupDate);
             const returned = new Date(returnDate);
             const noOfDays = Math.ceil((returned - picked) / (1000 * 60 * 60 * 24)) || 1;
-            const price = car.pricePerDay * noOfDays;
+            let price = car.pricePerDay * noOfDays;
+            
+            const taxAmount = Math.round(price * 0.10);
+            price += taxAmount;
             
             return res.json({ 
                 success: true, 
                 pricing: { 
                     totalPrice: price, 
                     averagePricePerDay: car.pricePerDay, 
-                    breakdown: null 
+                    breakdown: {
+                        basePrice: car.pricePerDay,
+                        totalDays: noOfDays,
+                        taxAmount
+                    }
                 } 
             });
         }

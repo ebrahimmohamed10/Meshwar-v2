@@ -17,6 +17,7 @@
     const [isCalculating, setIsCalculating] = useState(false)
     
     const [bookedDates, setBookedDates] = useState([]) 
+    const [showOwnerModal, setShowOwnerModal] = useState(false)
     const currency = import.meta.env.VITE_CURRENCY
     console.log("User Data from Context:", userData);
 
@@ -191,16 +192,42 @@ if (id) {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5 }}
               src={car.image} alt="" className='w-full h-auto md:max-h-100 object-cover rounded-xl mb-6 shadow-md' />
-              
-            <motion.div className='space-y-6'
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-            >
-              <div>
-                <h1 className='text-3xl font-bold'>{car.brand} {car.model}</h1>
-                <p className='text-gray-500 text-lg'>{car.category} • {car.year}</p>
-              </div>
+
+              <motion.div className='space-y-6'
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
+                <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+                  <div>
+                    <h1 className='text-3xl font-bold'>{car.brand} {car.model}</h1>
+                    <p className='text-gray-500 text-lg'>{car.category} • {car.year}</p>
+                  </div>
+
+                  {/* Owner Info Card */}
+                  {car.ownerDetails && (
+                    <div
+                      className='p-3 pr-5 bg-white border border-gray-200 shadow-sm rounded-2xl inline-flex items-center gap-8 cursor-pointer hover:shadow-md transition-all group w-fit'
+                      onClick={() => setShowOwnerModal(true)}
+                    >
+                      <div className='flex items-center gap-4'>
+                        <div className='relative'>
+                          <img src={car.ownerDetails.image || assets.profile_icon} alt="Owner" className='w-12 h-12 rounded-full object-cover shadow-sm border-2 border-gray-100 group-hover:border-primary transition-colors' />
+                          <div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full'></div>
+                        </div>
+                        <div>
+                          <h3 className='text-base font-bold text-gray-900 leading-tight'>{car.ownerDetails.name}</h3>
+                          <p className='text-xs text-gray-500 font-medium'>Car Owner</p>
+                        </div>
+                      </div>
+                      <div className='hidden sm:flex items-center justify-center w-8 h-8 rounded-full bg-gray-50 group-hover:bg-primary/10 transition-colors'>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-gray-400 group-hover:text-primary transition-colors">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+                </div>
               <hr className='border-borderColor my-6' />
 
               <div className='grid grid-cols-2 sm:grid-cols-4 gap-4'>
@@ -256,6 +283,7 @@ if (id) {
               })()}
 
             </motion.div>
+
           </motion.div>
 
           {/* Right: Booking Form */}
@@ -378,6 +406,16 @@ if (id) {
                       </div>
                     )}
 
+                    {/* Taxes and Fees */}
+                    {calculatedPrice.breakdown.taxAmount > 0 && (
+                      <div className='flex justify-between items-center text-gray-600 mt-2'>
+                        <span className='flex items-center gap-1.5'>
+                          🧾 Taxes & Fees (10%)
+                        </span>
+                        <span className='font-medium'>+{calculatedPrice.breakdown.taxAmount.toLocaleString()} {currency}</span>
+                      </div>
+                    )}
+
                     <hr className='border-gray-100 my-2' />
                     
                     <div className='flex justify-between items-center text-base font-bold text-gray-900'>
@@ -462,7 +500,59 @@ if (id) {
             </button>
 
           </motion.form>
+
         </div>
+
+        {/* Owner Details Modal */}
+        {showOwnerModal && car?.ownerDetails && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
+            >
+              <div className="h-32 bg-gradient-to-r from-primary to-emerald-400 relative">
+                <button 
+                  onClick={() => setShowOwnerModal(false)}
+                  className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white rounded-full p-1.5 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 pb-8 text-center -mt-16 relative z-10">
+                <img 
+                  src={car.ownerDetails.image || assets.profile_icon} 
+                  alt="Owner" 
+                  className="w-32 h-32 rounded-full border-4 border-white object-cover shadow-lg mx-auto mb-4 bg-white"
+                />
+                <h2 className="text-2xl font-bold text-gray-900">{car.ownerDetails.name}</h2>
+                <p className="text-sm text-gray-500 font-medium mb-6">Car Owner</p>
+                
+                <div className="grid grid-cols-2 gap-4 text-left">
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Joined</p>
+                    <p className="font-medium text-gray-900">
+                      {new Date(car.ownerDetails.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Response Rate</p>
+                    <p className="font-medium text-gray-900">100%</p>
+                  </div>
+                </div>
+                
+                <button 
+                  onClick={() => setShowOwnerModal(false)}
+                  className="mt-6 w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 rounded-xl transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
 
       </div>
     ) : <Loader />

@@ -147,8 +147,14 @@ export const createBooking = async (req, res) => {
             priceBreakdown = pricing.breakdown;
         } else {
             const noOfDays = Math.ceil((returned - picked) / (1000 * 60 * 60 * 24)) || 1;
-            price = carData.pricePerDay * noOfDays;
-            priceBreakdown = null;
+            let baseTotalPrice = carData.pricePerDay * noOfDays;
+            const taxAmount = Math.round(baseTotalPrice * 0.10);
+            price = baseTotalPrice + taxAmount;
+            priceBreakdown = {
+                basePrice: carData.pricePerDay,
+                totalDays: noOfDays,
+                taxAmount
+            };
         }
 
         // Handle Wallet Payment

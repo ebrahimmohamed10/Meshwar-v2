@@ -8,6 +8,7 @@ import ownerRouter from "./routes/ownerRoutes.js";
 import bookingRouter from "./routes/bookingRoutes.js";
 import chatbotRouter from "./routes/chatbotRoutes.js";
 import { startAutoCancelJob } from "./utils/autoCancelJob.js";
+import { startSubscriptionCronJob } from "./utils/subscriptionCron.js";
 import adminRouter from "./routes/adminRoute.js";
 import pricingRouter from "./routes/pricingRoutes.js";
 import reviewRouter from "./routes/reviewRoutes.js";
@@ -21,6 +22,7 @@ await connectDB()
 
 // Start Background Jobs
 startAutoCancelJob()
+startSubscriptionCronJob()
 
 // CORS Configuration
 app.use(cors({

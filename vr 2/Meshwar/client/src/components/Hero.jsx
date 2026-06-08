@@ -27,7 +27,7 @@ const Hero = () => {
             <div className="absolute bottom-20 right-10 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/4 rounded-full blur-3xl pointer-events-none" />
 
-<div className="relative z-20 flex flex-col items-center text-center gap-6 px-4 w-full max-w-5xl">
+            <div className="relative z-20 flex flex-col items-center text-center gap-6 px-4 w-full max-w-5xl">
                 {/* Badge */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

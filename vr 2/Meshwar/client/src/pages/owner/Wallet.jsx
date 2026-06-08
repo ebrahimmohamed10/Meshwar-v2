@@ -29,9 +29,9 @@ const showMinBalanceToast = (balance) => {
                 </div>
                 <div className="flex-1 space-y-0.5 text-left">
                     <h4 className="text-sm font-black text-gray-900 tracking-tight">Withdrawal Restricted</h4>
-                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Required: 1,000 EGP</p>
+                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Required: 5,000 EGP</p>
                     <p className="text-xs text-gray-500 font-semibold leading-relaxed pt-1">
-                        A minimum balance of 1,000 EGP is required to request a payout. Your current balance is {balance?.toLocaleString()} EGP.
+                        A minimum balance of 5,000 EGP is required to request a payout. Your current balance is {balance?.toLocaleString()} EGP.
                     </p>
                 </div>
                 <button
@@ -50,19 +50,19 @@ const showDailyLimitToast = () => {
         <div
             className={`${
                 t.visible ? 'animate-enter' : 'animate-leave'
-            } max-w-sm w-full bg-white shadow-2xl rounded-3xl pointer-events-auto flex ring-1 ring-black/5 p-5 border border-rose-50/80`}
+            } max-w-sm w-full bg-white shadow-2xl rounded-3xl pointer-events-auto flex ring-1 ring-black/5 p-5 border border-emerald-50/80`}
         >
             <div className="flex items-start gap-4 w-full">
-                <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 shrink-0">
+                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 shrink-0">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
                 <div className="flex-1 space-y-0.5 text-left">
-                    <h4 className="text-sm font-black text-gray-900 tracking-tight">Withdrawal Limit Reached</h4>
-                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Limit: 1 Payout / Day</p>
+                    <h4 className="text-sm font-black text-gray-900 tracking-tight">Weekly Limit Reached</h4>
+                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Notice: 1 Payout / Week</p>
                     <p className="text-xs text-gray-500 font-semibold leading-relaxed pt-1">
-                        You can only make one withdrawal request per day. Please try again tomorrow.
+                        You can only withdraw once a week. Please wait until next week to withdraw again.
                     </p>
                 </div>
                 <button
@@ -127,10 +127,19 @@ const OwnerWallet = () => {
         .reduce((sum, b) => sum + (b.price || 0), 0)
 
     const handleWithdrawClick = () => {
-        if (user.ownerWallet < 1000) {
+        if (user.ownerWallet < 5000) {
             showMinBalanceToast(user.ownerWallet);
             return;
         }
+        
+        // Frontend check for weekly limit
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const hasRecentWithdrawal = withdrawals.some(w => new Date(w.createdAt) >= sevenDaysAgo && w.status !== "Failed");
+        if (hasRecentWithdrawal) {
+            showDailyLimitToast(); // Re-used for weekly limit
+            return;
+        }
+
         setShowWithdrawModal(true);
     };
 
@@ -252,7 +261,7 @@ const OwnerWallet = () => {
                                             _id: booking._id,
                                             type: 'revenue',
                                             title: `Booking Fee: ${booking.car?.brand} ${booking.car?.model}`,
-                                            amount: booking.price,
+                                            amount: booking.price - (booking.priceBreakdown?.taxAmount || 0),
                                             date: booking.createdAt,
                                             status: booking.status,
                                             raw: booking
@@ -444,7 +453,7 @@ const BookingDetailModal = ({ booking, currency, onClose }) => {
                     <div className='pt-6 border-t border-gray-100 flex justify-between items-end'>
                         <div>
                             <p className='text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1'>Net Earnings</p>
-                            <h4 className='text-2xl font-black text-gray-900'>{booking.price?.toLocaleString()} <span className='text-sm font-medium text-gray-400'>{currency}</span></h4>
+                            <h4 className='text-2xl font-black text-gray-900'>{(booking.price - (booking.priceBreakdown?.taxAmount || 0)).toLocaleString()} <span className='text-sm font-medium text-gray-400'>{currency}</span></h4>
                         </div>
                         <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${booking.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                             {booking.status === 'confirmed' ? 'Credited' : 'Pending Confirmation'}
@@ -551,7 +560,7 @@ const WithdrawalModal = ({ user, withdrawals, currency, onClose, onSuccess, axio
     const handleSubmit = async (e) => {
         e.preventDefault()
         const numAmount = Number(amount)
-        if (user.ownerWallet < 1000) {
+        if (user.ownerWallet < 5000) {
             showMinBalanceToast(user.ownerWallet)
             return
         }
@@ -559,12 +568,12 @@ const WithdrawalModal = ({ user, withdrawals, currency, onClose, onSuccess, axio
             toast.error("Please enter a valid amount")
             return
         }
-        if (numAmount < 100) {
-            toast.error("Minimum withdrawal amount is 100 EGP")
+        if (numAmount < 5000) {
+            toast.error("Minimum withdrawal amount is 5,000 EGP")
             return
         }
-        if (numAmount > 5000) {
-            toast.error("Maximum withdrawal limit per transaction is 5,000 EGP")
+        if (numAmount > 30000) {
+            toast.error("Maximum withdrawal limit per transaction is 30,000 EGP")
             return
         }
         if (numAmount > user.ownerWallet) {
@@ -647,10 +656,10 @@ const WithdrawalModal = ({ user, withdrawals, currency, onClose, onSuccess, axio
                             type="number" 
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
-                            placeholder="Min: 100 | Max: 5,000"
+                            placeholder="Min: 5,000 | Max: 30,000"
                             className='w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:bg-white focus:border-emerald-500 outline-none transition-all placeholder:text-gray-400 font-mono'
-                            min="100"
-                            max="5000"
+                            min="5000"
+                            max="30000"
                             required
                         />
                     </div>

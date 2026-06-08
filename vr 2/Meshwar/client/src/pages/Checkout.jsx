@@ -149,8 +149,8 @@ const Checkout = () => {
             : (calculatedPrice ? calculatedPrice.totalPrice : car.pricePerDay * days)
           ) 
         : 0;
-    const taxes = isPremiumCheckout ? 0 : Math.round(total * 0.1)
-    const grandTotal = total + taxes
+    const taxes = isPremiumCheckout ? 0 : (calculatedPrice?.breakdown?.taxAmount || Math.round(total * 0.10))
+    const grandTotal = isPremiumCheckout ? total : (calculatedPrice ? calculatedPrice.totalPrice : total + taxes)
 
     const handleInputChange = (e) => {
         let { name, value } = e.target;
@@ -490,14 +490,27 @@ const Checkout = () => {
                                                     </div>
                                                 )}
                                                 
+                                                {/* Taxes and Fees */}
+                                                {calculatedPrice.breakdown.taxAmount > 0 && (
+                                                    <div className='flex justify-between items-center text-xs text-gray-600 mt-1'>
+                                                        <span className='flex items-center gap-1.5'>
+                                                            🧾 Taxes & Fees (10%)
+                                                        </span>
+                                                        <span className='font-bold'>
+                                                            +{calculatedPrice.breakdown.taxAmount.toLocaleString()} {currency}
+                                                        </span>
+                                                    </div>
+                                                )}
+
                                                 <div className='h-px bg-gray-100 my-1' />
-                                                <SummaryRow label="Adjusted Subtotal" value={`${calculatedPrice.totalPrice.toLocaleString()} ${currency}`} />
+                                                <SummaryRow label="Adjusted Subtotal" value={`${(calculatedPrice.totalPrice - calculatedPrice.breakdown.taxAmount).toLocaleString()} ${currency}`} />
                                             </>
                                         ) : (
-                                            <SummaryRow label={isPremiumCheckout ? "Plan Rate" : "Daily Rate"} value={`${(car.pricePerDay || 0).toLocaleString()} ${currency}`} />
+                                            <>
+                                                <SummaryRow label={isPremiumCheckout ? "Plan Rate" : "Daily Rate"} value={`${(car.pricePerDay || 0).toLocaleString()} ${currency}`} />
+                                                {taxes > 0 && <SummaryRow label="Taxes & Fees" value={`${taxes.toLocaleString()} ${currency}`} />}
+                                            </>
                                         )}
-
-                                        {taxes > 0 && <SummaryRow label="Taxes & Fees" value={`${taxes.toLocaleString()} ${currency}`} />}
                                     </div>
                                 </div>
 

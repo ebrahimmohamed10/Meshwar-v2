@@ -94,7 +94,29 @@ export const getCars = async (req, res) => {
                     bookingCount: { $size: "$bookings" }
                 }
             },
-            { $project: { bookings: 0 } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "ownerDetails"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$ownerDetails",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $project: { 
+                    bookings: 0,
+                    "ownerDetails.password": 0,
+                    "ownerDetails.role": 0,
+                    "ownerDetails.resetCode": 0,
+                    "ownerDetails.resetCodeExpiry": 0
+                } 
+            },
             { $sort: { isAvaliable: -1, bookingCount: -1 } }
         ]);
         res.json({ success: true, cars })
@@ -185,7 +207,20 @@ export const upgradeToPremium = async (req, res) => {
             await User.findByIdAndUpdate(_id, { $inc: { wallet: -price } });
         }
 
-        await User.findByIdAndUpdate(_id, { isPremium: true, role: 'owner' });
+        // Calculate expiry date
+        const expiryDate = new Date();
+        if (billingCycle === 'annual') {
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+        } else {
+            expiryDate.setMonth(expiryDate.getMonth() + 1);
+        }
+
+        await User.findByIdAndUpdate(_id, { 
+            isPremium: true, 
+            role: 'owner',
+            subscriptionPlan: billingCycle || 'monthly',
+            subscriptionExpiryDate: expiryDate
+        });
         res.json({ success: true, message: "Welcome to Premium! Your dashboard is now ready." });
     } catch (error) {
         console.log(error.message);
@@ -340,12 +375,15 @@ export const withdrawWallet = async (req, res) => {
             return res.json({ success: false, message: "Please enter a valid amount" });
         }
 
+        const minAmount = walletType === 'owner' ? 5000 : 100;
+        const maxAmount = walletType === 'owner' ? 30000 : 5000;
+
         // Limit validations
-        if (numAmount < 100) {
-            return res.json({ success: false, message: "Minimum withdrawal limit is 100 EGP" });
+        if (numAmount < minAmount) {
+            return res.json({ success: false, message: `Minimum withdrawal limit is ${minAmount.toLocaleString()} EGP` });
         }
-        if (numAmount > 5000) {
-            return res.json({ success: false, message: "Maximum withdrawal limit per transaction is 5,000 EGP" });
+        if (numAmount > maxAmount) {
+            return res.json({ success: false, message: `Maximum withdrawal limit per transaction is ${maxAmount.toLocaleString()} EGP` });
         }
 
         if (!method || !details || details.trim() === '') {
@@ -358,8 +396,8 @@ export const withdrawWallet = async (req, res) => {
         }
 
         const balanceField = walletType === 'owner' ? 'ownerWallet' : 'wallet';
-        if (user[balanceField] < 1000) {
-            return res.json({ success: false, message: `A minimum balance of 1,000 EGP is required to withdraw funds. Current balance: ${user[balanceField]} EGP` });
+        if (user[balanceField] < minAmount) {
+            return res.json({ success: false, message: `A minimum balance of ${minAmount.toLocaleString()} EGP is required to withdraw funds. Current balance: ${user[balanceField]} EGP` });
         }
 
         if (user[balanceField] < numAmount) {
@@ -378,6 +416,18 @@ export const withdrawWallet = async (req, res) => {
 
             if (existingWithdrawal) {
                 return res.json({ success: false, message: "You can only make one withdrawal per day." });
+            }
+        } else if (walletType === 'owner') {
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            const existingWithdrawal = await Withdrawal.findOne({
+                user: _id,
+                walletType: 'owner',
+                status: { $ne: "Failed" },
+                createdAt: { $gte: sevenDaysAgo }
+            });
+
+            if (existingWithdrawal) {
+                return res.json({ success: false, message: "You can only withdraw once a week. Please wait until next week to withdraw again." });
             }
         }
 

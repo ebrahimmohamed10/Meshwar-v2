@@ -1,5 +1,5 @@
 import express from 'express'
-import { getDashboardStats, getAllUsers, deleteUser, getAllCars, deleteCar, getAllBookings, cancelBookingByAdmin, approveCar, getSystemSettings, updateSystemSettings, getProfitsData } from '../controllers/adminController.js';
+import { getDashboardStats, getAllUsers, deleteUser, getAllCars, deleteCar, getAllBookings, cancelBookingByAdmin, approveCar, getSystemSettings, updateSystemSettings, getProfitsData, getPendingFinancesData } from '../controllers/adminController.js';
 const router = express.Router()
 
 router.get('/stats', getDashboardStats)
@@ -13,5 +13,6 @@ router.put('/cars/:id/status', approveCar);
 router.get('/settings', getSystemSettings);
 router.put('/settings', updateSystemSettings);
 router.get('/profits', getProfitsData);
+router.get('/pending-finances', getPendingFinancesData);
 
 export default router

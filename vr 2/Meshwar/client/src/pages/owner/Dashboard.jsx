@@ -147,7 +147,7 @@ const Dashboard = () => {
                         </div>
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap text-right">
-                        <span className='text-sm font-bold text-gray-900'>{booking.price.toLocaleString()} <span className="text-xs text-gray-500 font-normal">{currency}</span></span>
+                        <span className='text-sm font-bold text-gray-900'>{(booking.price - (booking.priceBreakdown?.taxAmount || 0)).toLocaleString()} <span className="text-xs text-gray-500 font-normal">{currency}</span></span>
                       </td>
                       <td className="py-4 px-6 whitespace-nowrap text-right">
                         <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-bold tracking-wide uppercase

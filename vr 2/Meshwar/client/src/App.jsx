@@ -28,6 +28,7 @@ import AdminManageCars from './pages/AdminManageCars'
 import AdminTotalBookings from './pages/AdminTotalBookings'
 import AdminSystemSettings from './pages/AdminSystemSettings'
 import AdminProfits from './pages/AdminProfits'
+import AdminPendingFinances from './pages/AdminPendingFinances'
 import AdminLayout from './pages/AdminLayout'
 
 const App = () => {
@@ -70,11 +71,12 @@ const App = () => {
 
           <Route path='/admin' element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
-            <Route path='users' element={<ManageUsers />} />
-            <Route path='cars' element={<AdminManageCars />} />
-            <Route path='bookings' element={<AdminTotalBookings />} />
-            <Route path='profits' element={<AdminProfits />} />
-            <Route path='settings' element={<AdminSystemSettings />} />
+            <Route path="users" element={<ManageUsers />} />
+            <Route path="cars" element={<AdminManageCars />} />
+            <Route path="bookings" element={<AdminTotalBookings />} />
+            <Route path="profits" element={<AdminProfits />} />
+            <Route path="pending-finances" element={<AdminPendingFinances />} />
+            <Route path="settings" element={<AdminSystemSettings />} />
           </Route>
         </Routes>
       </div>

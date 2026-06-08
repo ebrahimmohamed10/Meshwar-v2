@@ -143,8 +143,8 @@ export const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
       .populate('car')
-      .populate('user', 'name email phone')
-      .populate('owner', 'name email phone')
+      .populate('user', '-password')
+      .populate('owner', '-password')
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: bookings });
   } catch (error) {
@@ -211,6 +211,29 @@ export const getProfitsData = async (req, res) => {
       success: true,
       balance: currentBalance,
       bookings: profitBookings
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getPendingFinancesData = async (req, res) => {
+  try {
+    const pendingBookings = await Booking.find({ 
+      status: { $in: ['pending', 'confirmed'] },
+      handoverVerified: false
+    })
+      .populate('car')
+      .populate('user', '-password')
+      .populate('owner', '-password')
+      .sort({ createdAt: -1 });
+
+    const totalHeldFunds = pendingBookings.reduce((sum, b) => sum + (b.price || 0), 0);
+
+    res.status(200).json({
+      success: true,
+      totalHeldFunds,
+      bookings: pendingBookings
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

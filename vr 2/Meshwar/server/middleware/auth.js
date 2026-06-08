@@ -13,7 +13,21 @@ export const protect = async (req, res, next) => {
         if (!userId) {
             return res.json({ success: false, message: "not authorized" })
         }
-        req.user = await User.findById(userId).select("-password")
+        let user = await User.findById(userId).select("-password")
+        if (user) {
+            // Check subscription expiration
+            if (user.isPremium && user.subscriptionExpiryDate && new Date() > user.subscriptionExpiryDate) {
+                user.isPremium = false;
+                user.role = 'user';
+                user.subscriptionPlan = null;
+                user.subscriptionExpiryDate = null;
+                await user.save();
+            }
+            req.user = user;
+        } else {
+            req.user = null;
+        }
+        
         next();
     } catch (error) {
         return res.json({ success: false, message: "not authorized" })

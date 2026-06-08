@@ -264,6 +264,10 @@ export const calculateDynamicPrice = async ({ carId, pickupDate, returnDate }) =
         breakdown.capped = "min";
     }
 
+    const taxAmount = Math.round(totalPrice * 0.10);
+    totalPrice += taxAmount;
+    breakdown.taxAmount = taxAmount;
+
     return {
         totalPrice: Math.round(totalPrice),
         averagePricePerDay: Math.round(totalPrice / totalDays),

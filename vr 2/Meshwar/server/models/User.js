@@ -31,6 +31,8 @@ const userSchema = new mongoose.Schema({
     ownerWallet: { type: Number, default: 0 },
     resetCode: { type: String, default: null },
     resetCodeExpiry: { type: Date, default: null },
+    subscriptionPlan: { type: String, default: null },
+    subscriptionExpiryDate: { type: Date, default: null },
 }, { timestamps: true })
 
 const User = mongoose.model('User', userSchema)
