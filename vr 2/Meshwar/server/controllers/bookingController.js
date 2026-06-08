@@ -336,7 +336,7 @@ export const verifyHandoverPin = async (req, res) => {
 
         // Check PIN
         if (booking.handoverPin !== String(pin).trim()) {
-            return res.json({ success: false, message: "رمز PIN غير صحيح. حاول مرة أخرى." });
+            return res.json({ success: false, message: "Incorrect PIN. Please try again." });
         }
 
         // PIN is correct — transfer money to owner wallet (minus admin commission)
@@ -362,7 +362,7 @@ export const verifyHandoverPin = async (req, res) => {
 
         res.json({ 
             success: true, 
-            message: "تم التحقق بنجاح! تم تحويل الأرباح إلى محفظتك.",
+            message: "Verified successfully! Earnings have been transferred to your wallet.",
             ownerAmount,
             commission
         });

@@ -66,7 +66,7 @@ const ManageBookings = () => {
   const handleVerifyPin = async (bookingId) => {
     const pin = (pinInputs[bookingId] || '').trim()
     if (pin.length !== 4) {
-      toast.error('يرجى إدخال رمز PIN المكون من 4 أرقام كاملاً')
+      toast.error('Please enter the complete 4-digit PIN')
       return
     }
     setVerifyingPin(bookingId)
@@ -296,17 +296,17 @@ const ManageBookings = () => {
                               ) : (
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                               )}
-                              {verifyingPin === booking._id ? 'جارٍ التحقق...' : 'بدء التأجير وتحصيل الأرباح'}
+                              {verifyingPin === booking._id ? 'Verifying...' : 'Start Rental & Collect Earnings'}
                             </button>
-                            <p className="text-[10px] text-gray-400 font-medium text-right leading-tight">أدخل رمز PIN المستخدم لبدء التأجير</p>
+                            <p className="text-[10px] text-gray-400 font-medium text-right leading-tight">Enter the user's PIN to start the rental</p>
                           </div>
                         ) : booking.status === 'confirmed' && booking.handoverVerified ? (
                           <div className="flex flex-col items-end gap-1">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
                               <svg className='w-3 h-3' fill='none' stroke='currentColor' strokeWidth={3} viewBox='0 0 24 24'><path strokeLinecap='round' strokeLinejoin='round' d='M5 13l4 4L19 7'/></svg>
-                              تم التسليم
+                              Handed Over
                             </span>
-                            <p className="text-[10px] text-gray-400 font-medium">تم تحصيل الأرباح</p>
+                            <p className="text-[10px] text-gray-400 font-medium">Earnings Collected</p>
                           </div>
                         ) : (
                           <span className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold

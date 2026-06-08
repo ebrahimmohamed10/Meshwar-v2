@@ -36,7 +36,7 @@ const AdminSystemSettings = () => {
     try {
       const rate = Number(commissionRate);
       if (isNaN(rate) || rate < 0 || rate > 100) {
-        toast.error('نسبة العمولة يجب أن تكون بين 0 و 100');
+        toast.error('Commission rate must be between 0 and 100');
         return;
       }
       const { data } = await axios.put('/api/admin/settings', {
@@ -44,12 +44,12 @@ const AdminSystemSettings = () => {
         minWithdrawalAmount: Number(minWithdrawal),
       });
       if (data.success) {
-        toast.success('تم حفظ الإعدادات بنجاح!');
+        toast.success('Settings saved successfully!');
       } else {
         toast.error(data.message);
       }
     } catch (e) {
-      toast.error('حدث خطأ أثناء الحفظ');
+      toast.error('An error occurred while saving');
     } finally {
       setIsSaving(false);
     }
@@ -169,7 +169,7 @@ const AdminSystemSettings = () => {
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-green-600">%</span>
                         </div>
-                        <p className="text-[10px] text-gray-400 ml-1">حصة Meshwar من كل عملية تأجير. تُخصم تلقائياً عند تحقق PIN الاستلام.</p>
+                        <p className="text-[10px] text-gray-400 ml-1">Meshwar's share from each rental. Automatically deducted upon handover PIN verification.</p>
                       </div>
                       <InputField label="Value Added Tax (%)" value="14" helper="Standard government VAT applied to total price." />
                       <InputField label="Booking Cancellation Fee (EGP)" value="150" helper="Fixed penalty charged to customers for late cancels." />
@@ -183,7 +183,7 @@ const AdminSystemSettings = () => {
                     </div>
                     <div className="flex-1 text-center md:text-left">
                       <p className="font-black text-green-900 text-lg">Wallet Withdrawal Threshold</p>
-                      <p className="text-sm text-green-700 leading-relaxed">الحد الأدنى للرصيد المتاح قبل تمكن المالك من طلب سحب.</p>
+                      <p className="text-sm text-green-700 leading-relaxed">Minimum available balance before an owner can request a withdrawal.</p>
                       <div className="mt-4 flex items-center justify-center md:justify-start gap-3">
                         <div className="relative">
                           <input

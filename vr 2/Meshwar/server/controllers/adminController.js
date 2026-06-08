@@ -26,7 +26,7 @@ export const updateSystemSettings = async (req, res) => {
     if (commissionRate !== undefined) {
       const rate = Number(commissionRate);
       if (isNaN(rate) || rate < 0 || rate > 1) {
-        return res.json({ success: false, message: "نسبة العمولة يجب أن تكون بين 0 و 1 (مثال: 0.10 تعني 10%)" });
+        return res.json({ success: false, message: "Commission rate must be between 0 and 1 (e.g., 0.10 means 10%)" });
       }
     }
 
@@ -42,7 +42,7 @@ export const updateSystemSettings = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    res.json({ success: true, message: "تم تحديث الإعدادات بنجاح", settings: updated });
+    res.json({ success: true, message: "Settings updated successfully", settings: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
