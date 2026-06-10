@@ -28,7 +28,7 @@ const LockIcon = () => (
 
 const MyBookings = () => {
 
-  const { axios, user, currency, fetchUser } = useAppContext()
+  const { axios, user, currency, fetchUser, setShowLogin } = useAppContext()
 
   const [bookings, setBookings] = useState([])
   const [confirmCancelId, setConfirmCancelId] = useState(null)
@@ -73,6 +73,45 @@ const MyBookings = () => {
   useEffect(() => {
     user && fetchMyBookings()
   }, [user])
+
+  if (!user) {
+    return (
+      <div className="min-h-screen relative overflow-hidden bg-slate-50/50 flex flex-col items-center justify-center px-6">
+        {/* Background Blobs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/10 rounded-full blur-[100px] animate-pulse" />
+          <div className="absolute top-1/3 -left-40 w-[30rem] h-[30rem] bg-blue-500/5 rounded-full blur-[100px]" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_0%,#000_10%,transparent_100%)]" />
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 bg-white/80 backdrop-blur-xl border border-white p-10 md:p-14 rounded-[2.5rem] shadow-[0_20px_60px_rgb(0,0,0,0.05)] max-w-lg w-full text-center"
+        >
+          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-3">Track Your Rides</h2>
+          <p className="text-gray-500 leading-relaxed mb-10 font-medium">Log in or create an account to view your upcoming reservations, manage past trips, and instantly book your dream car.</p>
+          
+          <button 
+            onClick={() => setShowLogin(true)}
+            className="w-full relative group overflow-hidden bg-gray-900 text-white font-black text-xs tracking-[0.2em] uppercase py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1"
+          >
+            <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-primary to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></span>
+            <span className="relative flex items-center justify-center gap-3">
+              Login / Sign Up
+              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </span>
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-slate-50/50 pb-24">
