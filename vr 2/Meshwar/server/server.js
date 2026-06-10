@@ -37,8 +37,9 @@ app.use(cors({
     'http://127.0.0.1:5174',
     'http://127.0.0.1:5175',
     'http://127.0.0.1:5176',
-    'http://127.0.0.1:5177'
-  ],
+    'http://127.0.0.1:5177',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
