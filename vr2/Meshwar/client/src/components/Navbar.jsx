@@ -67,7 +67,9 @@ const Navbar = () => {
 
             {/* Desktop nav links */}
             <div className="hidden sm:flex items-center gap-8">
-                {menuLinks.map((link, index) => (
+                {menuLinks
+                    .filter(link => user ? true : !['My Bookings', 'Wallet', 'My Account'].includes(link.name))
+                    .map((link, index) => (
                     <div key={index} className="flex items-center gap-2">
                         <Link
                             to={link.path}
@@ -144,7 +146,9 @@ const Navbar = () => {
                         transition={{ duration: 0.25 }}
                         className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-xl sm:hidden px-6 py-6 flex flex-col gap-4"
                     >
-                        {menuLinks.map((link, i) => (
+                        {menuLinks
+                            .filter(link => user ? true : !['My Bookings', 'Wallet', 'My Account'].includes(link.name))
+                            .map((link, i) => (
                             <div key={i} className="flex items-center justify-between py-1">
                                 <Link to={link.path} onClick={() => setOpen(false)}
                                     className="text-gray-700 font-medium hover:text-primary transition-colors">
