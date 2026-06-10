@@ -90,13 +90,14 @@ const MyBookings = () => {
           transition={{ duration: 0.5 }}
           className="relative z-10 bg-white/80 backdrop-blur-xl border border-white p-10 md:p-14 rounded-[2.5rem] shadow-[0_20px_60px_rgb(0,0,0,0.05)] max-w-lg w-full text-center"
         >
-          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+          {/* Beautiful Car Graphic */}
+          <div className="relative w-48 h-24 mx-auto mb-6 flex items-center justify-center">
+            <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full scale-150 animate-pulse"></div>
+            <img src={assets.main_car} alt="Car" className="w-full h-full object-contain relative z-10 hover:scale-110 transition-transform duration-500 drop-shadow-xl" />
           </div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-3">Track Your Rides</h2>
-          <p className="text-gray-500 leading-relaxed mb-10 font-medium">Log in or create an account to view your upcoming reservations, manage past trips, and instantly book your dream car.</p>
+
+          <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-3">Track your rides easily!</h2>
+          <p className="text-gray-500 leading-relaxed mb-10 font-medium">Log in or create an account to view and manage your bookings.</p>
           
           <button 
             onClick={() => setShowLogin(true)}
