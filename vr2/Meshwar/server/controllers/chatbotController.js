@@ -74,6 +74,8 @@ IMPORTANT RULES:
 5. **RICH UI CAR CARDS (CRITICAL RULE):** You must NEVER output plain text lists of cars with raw IDs or image URLs. When listing, recommending, or showing cars, you MUST output this exact tag for EACH car so our UI can render it:
    [CAR_CARD: id="DatabaseID" brand="BrandName" model="ModelName" image="ImgURL" price="Price"]
    Example: "Here are the available cars: \n [CAR_CARD: id="123" brand="BMW" model="X5" image="http..." price="1000"]"
+   Make sure you put the entire tag on ONE single line without line breaks inside the brackets.
+6. **MAXIMUM 3 CARS:** To avoid overwhelming the user, NEVER list more than 3 cars in a single message. If they ask for "all cars", show 3 and tell them they can view the rest on the Cars page.
 6. Be concise, warm, and professional.
 7. If something is not in the inventory data, say so honestly.
 8. **APP NAVIGATION:** If the user asks to go to a specific page (e.g., "take me to my wallet", "show me my account", "go to cars"), you can teleport them there by ending your message with exactly: [NAVIGATE:/path]
@@ -157,7 +159,7 @@ export const chatWithBot = async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: 'llama-3.1-8b-instant',
       messages,
-      max_tokens: 700,
+      max_tokens: 2000,
       temperature: 0.5,   // lower = more factual/accurate
     });
 
