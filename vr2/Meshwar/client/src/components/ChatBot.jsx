@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import { useAppContext } from '../context/AppContext';
+import { useNavigate } from 'react-router-dom';
 
 /* ─── Inline styles (no extra deps needed) ─── */
 const css = `
@@ -286,6 +288,8 @@ const css = `
 
 /* ─── Component ─── */
 const ChatBot = () => {
+  const { user } = useAppContext();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -389,12 +393,38 @@ const ChatBot = () => {
         role: m.type === 'user' ? 'user' : 'assistant',
         content: m.text
       }));
-      const res = await axios.post(`${API_URL}/api/chatbot/chat`, { message: msg, conversationHistory: history });
+      
+      const userContext = user ? {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        walletBalance: user.walletBalance,
+        role: user.role
+      } : null;
+
+      const res = await axios.post(`${API_URL}/api/chatbot/chat`, { 
+        message: msg, 
+        conversationHistory: history,
+        userContext 
+      });
       setShowTyping(false);
       if (res.data.success) {
+        let botText = res.data.message;
+        
+        // Check for navigation command
+        const navMatch = botText.match(/\[NAVIGATE:(\/[^\]]+)\]/);
+        if (navMatch) {
+          const path = navMatch[1];
+          botText = botText.replace(navMatch[0], '').trim();
+          setTimeout(() => {
+            navigate(path);
+            setIsOpen(false); // Close chat when navigating
+          }, 1500);
+        }
+
         updateSessionMessages([...newMessages, {
           id: Date.now() + 1, type: 'bot',
-          text: res.data.message, timestamp: new Date().toLocaleTimeString()
+          text: botText, timestamp: new Date().toLocaleTimeString()
         }]);
       }
     } catch {
@@ -409,6 +439,40 @@ const ChatBot = () => {
 
   const handleKey = e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
+  };
+
+  const renderMessageContent = (text) => {
+    const parts = text.split(/(\[CAR_CARD:[^\]]+\])/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('[CAR_CARD:')) {
+        const idMatch = part.match(/id="([^"]+)"/);
+        const brandMatch = part.match(/brand="([^"]+)"/);
+        const modelMatch = part.match(/model="([^"]+)"/);
+        const imageMatch = part.match(/image="([^"]+)"/);
+        const priceMatch = part.match(/price="([^"]+)"/);
+        
+        if (!idMatch) return null;
+        
+        return (
+          <div key={index} 
+            className="my-3 overflow-hidden rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer shadow-lg group"
+            onClick={() => { navigate(`/car-details/${idMatch[1]}`); setIsOpen(false); }}
+          >
+            <div className="h-32 p-3 flex items-center justify-center bg-gradient-to-b from-transparent to-black/20">
+              <img src={imageMatch?.[1]} alt="Car" className="max-h-full object-contain group-hover:scale-110 transition-transform duration-500 drop-shadow-2xl" />
+            </div>
+            <div className="p-3 bg-black/40 backdrop-blur-md">
+              <h4 className="text-white font-bold text-sm mb-1">{brandMatch?.[1]} {modelMatch?.[1]}</h4>
+              <div className="flex justify-between items-center">
+                <span className="text-emerald-400 font-black tracking-tight">{priceMatch?.[1]} EGP<span className="text-[10px] text-emerald-600 font-normal">/day</span></span>
+                <span className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-md font-bold group-hover:bg-primary group-hover:text-white transition-colors">Book Now</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      return <ReactMarkdown key={index}>{part}</ReactMarkdown>;
+    });
   };
 
   return (
@@ -503,7 +567,7 @@ const ChatBot = () => {
                       <div className={`cb-bubble ${msg.type}${msg.isError ? ' error' : ''}`}>
                         {msg.type === 'bot' && !msg.isError ? (
                           <div className="cb-markdown">
-                            <ReactMarkdown>{msg.text}</ReactMarkdown>
+                            {renderMessageContent(msg.text)}
                           </div>
                         ) : (
                           msg.text

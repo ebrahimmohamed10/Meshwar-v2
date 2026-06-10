@@ -41,7 +41,7 @@ const buildInventoryContext = (cars) => {
 
   // Full car list (concise per car)
   const carList = cars.map(c =>
-    `  • ${c.brand} ${c.model} (${c.year}) | ${c.category} | ${c.fuel_type} | ${c.transmission} | ${c.seating_capacity} seats | ${c.pricePerDay}EGP/day | Location: ${c.location} | ${c.isAvaliable ? '✅ Available' : '❌ Not available'}`
+    `  • ID: ${c._id} | ${c.brand} ${c.model} (${c.year}) | ${c.category} | ${c.fuel_type} | ${c.transmission} | ${c.seating_capacity} seats | ${c.pricePerDay}EGP/day | Location: ${c.location} | Image: ${c.image} | ${c.isAvaliable ? '✅ Available' : '❌ Not available'}`
   ).join('\n');
 
   return `
@@ -71,17 +71,17 @@ IMPORTANT RULES:
 2. When asked about pricing, list actual cars with their exact prices from the data.
 3. When asked about availability, only mention cars marked ✅ Available.
 4. When asked about a specific brand/model/category, filter from the inventory and give exact details.
-5. Format car listings cleanly! Do NOT use comma-separated run-on sentences for car details. Use structured bullet points for each car, like this:
-
-**Brand Model (Year)**
-* **Price:** X EGP/day
-* **Specs:** Category | Fuel | Transmission | Seats
-* **Location:** City
-* **Status:** ✅ Available
-
+5. **RICH UI CAR CARDS:** When you recommend a specific car to the user, you MUST include this exact tag in your message so our system can render a beautiful interactive Car Card for them:
+   [CAR_CARD: id="THE_CAR_ID" brand="THE_BRAND" model="THE_MODEL" image="THE_IMAGE_URL" price="THE_PRICE"]
+   Replace the uppercase placeholders with the actual exact values from the inventory data. Put this tag on its own line after describing the car.
 6. Be concise, warm, and professional.
 7. If something is not in the inventory data, say so honestly.
-8. For booking questions, guide users: browse the Cars page → select a car → choose dates → confirm booking.
+8. **APP NAVIGATION:** If the user asks to go to a specific page (e.g., "take me to my wallet", "show me my account", "go to cars"), you can teleport them there by ending your message with exactly: [NAVIGATE:/path]
+   - Valid paths: /cars, /my-bookings, /wallet, /my-account, /
+   - Example: "I'm taking you to your wallet right now! [NAVIGATE:/wallet]"
+9. **USER AWARENESS:** If user context is provided below, use their name to be friendly. You can also tell them their wallet balance if they ask.
+
+{USER_CONTEXT}
 
 {INVENTORY}
 `;
@@ -89,7 +89,7 @@ IMPORTANT RULES:
 // ─── Main chat handler ────────────────────────────────────────────────────────
 export const chatWithBot = async (req, res) => {
   try {
-    const { message, conversationHistory = [] } = req.body;
+    const { message, conversationHistory = [], userContext = null } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -98,9 +98,16 @@ export const chatWithBot = async (req, res) => {
     // Fetch ALL cars fresh from DB every request (ensures live data)
     const cars = await Car.find({}).lean();
 
+    // Format User Context
+    let userContextString = "The user is currently browsing as a Guest (not logged in).";
+    if (userContext) {
+      userContextString = `USER CONTEXT:\n- Name: ${userContext.name}\n- Email: ${userContext.email}\n- Wallet Balance: ${userContext.walletBalance}EGP\n- Role: ${userContext.role}\n(Speak to them by their first name!)`;
+    }
+
     // Build rich real-data context
     const inventoryContext = buildInventoryContext(cars);
-    const systemPrompt = SYSTEM_PROMPT.replace('{INVENTORY}', inventoryContext);
+    let systemPrompt = SYSTEM_PROMPT.replace('{INVENTORY}', inventoryContext);
+    systemPrompt = systemPrompt.replace('{USER_CONTEXT}', userContextString);
 
     // Smart search: if user asks about something specific, find matching cars
     let extraContext = '';
@@ -133,7 +140,7 @@ export const chatWithBot = async (req, res) => {
         if (matched.length > 0 && matched.length < cars.length) {
           extraContext = `\n\n[SEARCH MATCH for "${searchTerms.join(' ')}"]\n` +
             matched.map(c =>
-              `• ${c.brand} ${c.model} (${c.year}) — ${c.category}, ${c.fuel_type}, ${c.transmission}, ${c.seating_capacity} seats, ${c.pricePerDay}EGP/day, ${c.location}, ${c.isAvaliable ? 'Available' : 'Not available'}\n  Description: ${c.description}`
+              `• ID: ${c._id} | ${c.brand} ${c.model} (${c.year}) — ${c.category}, ${c.fuel_type}, ${c.transmission}, ${c.seating_capacity} seats, ${c.pricePerDay}EGP/day, ${c.location}, ${c.isAvaliable ? 'Available' : 'Not available'} | Image: ${c.image}\n  Description: ${c.description}`
             ).join('\n');
         }
       }
