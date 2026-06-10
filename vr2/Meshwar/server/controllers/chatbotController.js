@@ -41,7 +41,7 @@ const buildInventoryContext = (cars) => {
 
   // Full car list (concise per car)
   const carList = cars.map(c =>
-    `  • ID: ${c._id} | ${c.brand} ${c.model} (${c.year}) | ${c.category} | ${c.fuel_type} | ${c.transmission} | ${c.seating_capacity} seats | ${c.pricePerDay}EGP/day | Location: ${c.location} | Image: ${c.image} | ${c.isAvaliable ? '✅ Available' : '❌ Not available'}`
+    `  [DatabaseID: ${c._id}] [ImgURL: ${c.image}] ${c.brand} ${c.model} (${c.year}) | ${c.category} | ${c.fuel_type} | ${c.transmission} | ${c.seating_capacity} seats | ${c.pricePerDay}EGP/day | Location: ${c.location} | ${c.isAvaliable ? '✅ Available' : '❌ Not available'}`
   ).join('\n');
 
   return `
@@ -71,9 +71,9 @@ IMPORTANT RULES:
 2. When asked about pricing, list actual cars with their exact prices from the data.
 3. When asked about availability, only mention cars marked ✅ Available.
 4. When asked about a specific brand/model/category, filter from the inventory and give exact details.
-5. **RICH UI CAR CARDS:** When you recommend a specific car to the user, you MUST include this exact tag in your message so our system can render a beautiful interactive Car Card for them:
-   [CAR_CARD: id="THE_CAR_ID" brand="THE_BRAND" model="THE_MODEL" image="THE_IMAGE_URL" price="THE_PRICE"]
-   Replace the uppercase placeholders with the actual exact values from the inventory data. Put this tag on its own line after describing the car.
+5. **RICH UI CAR CARDS (CRITICAL RULE):** You must NEVER output plain text lists of cars with raw IDs or image URLs. When listing, recommending, or showing cars, you MUST output this exact tag for EACH car so our UI can render it:
+   [CAR_CARD: id="DatabaseID" brand="BrandName" model="ModelName" image="ImgURL" price="Price"]
+   Example: "Here are the available cars: \n [CAR_CARD: id="123" brand="BMW" model="X5" image="http..." price="1000"]"
 6. Be concise, warm, and professional.
 7. If something is not in the inventory data, say so honestly.
 8. **APP NAVIGATION:** If the user asks to go to a specific page (e.g., "take me to my wallet", "show me my account", "go to cars"), you can teleport them there by ending your message with exactly: [NAVIGATE:/path]
@@ -140,8 +140,8 @@ export const chatWithBot = async (req, res) => {
         if (matched.length > 0 && matched.length < cars.length) {
           extraContext = `\n\n[SEARCH MATCH for "${searchTerms.join(' ')}"]\n` +
             matched.map(c =>
-              `• ID: ${c._id} | ${c.brand} ${c.model} (${c.year}) — ${c.category}, ${c.fuel_type}, ${c.transmission}, ${c.seating_capacity} seats, ${c.pricePerDay}EGP/day, ${c.location}, ${c.isAvaliable ? 'Available' : 'Not available'} | Image: ${c.image}\n  Description: ${c.description}`
-            ).join('\n');
+              `[DatabaseID: ${c._id}] [ImgURL: ${c.image}] ${c.brand} ${c.model} (${c.year}) — ${c.category}, ${c.fuel_type}, ${c.transmission}, ${c.seating_capacity} seats, ${c.pricePerDay}EGP/day, ${c.location}, ${c.isAvaliable ? 'Available' : 'Not available'}\n  Description: ${c.description}`
+            ).join('\n\n');
         }
       }
     }
