@@ -66,4 +66,9 @@ app.use('/api/admin', adminRouter)
 app.use('/api/pricing', pricingRouter)
 app.use('/api/reviews', reviewRouter)
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+export default app;
