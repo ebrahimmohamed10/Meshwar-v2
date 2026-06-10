@@ -409,22 +409,9 @@ const ChatBot = () => {
       });
       setShowTyping(false);
       if (res.data.success) {
-        let botText = res.data.message;
-        
-        // Check for navigation command
-        const navMatch = botText.match(/\[NAVIGATE:(\/[^\]]+)\]/);
-        if (navMatch) {
-          const path = navMatch[1];
-          botText = botText.replace(navMatch[0], '').trim();
-          setTimeout(() => {
-            navigate(path);
-            setIsOpen(false); // Close chat when navigating
-          }, 1500);
-        }
-
         updateSessionMessages([...newMessages, {
           id: Date.now() + 1, type: 'bot',
-          text: botText, timestamp: new Date().toLocaleTimeString()
+          text: res.data.message, timestamp: new Date().toLocaleTimeString()
         }]);
       }
     } catch {
