@@ -1,9 +1,16 @@
 import PricingRule from "../models/PricingRule.js";
 import Car from "../models/Car.js";
 import Booking from "../models/Booking.js";
+import OpenAI from 'openai';
+
+// Initialize Groq client using OpenAI-compatible API
+const openai = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1'
+});
 
 /**
- * Calculate the dynamic price for a car rental
+ * Calculate the dynamic price for a car rental using AI Strategy
  */
 export const calculateDynamicPrice = async ({ carId, pickupDate, returnDate }) => {
     const car = await Car.findById(carId);
@@ -20,257 +27,144 @@ export const calculateDynamicPrice = async ({ carId, pickupDate, returnDate }) =
         rules = await PricingRule.findOne({ owner: car.owner, car: null, isActive: true });
     }
 
-    const breakdown = {
-        basePrice,
-        totalDays,
-        seasonalMultiplier: 1.0,
-        seasonName: null,
-        demandMultiplier: 1.0,
-        demandLabel: "Normal Demand",
-        carFeatureMultiplier: 1.0,
-        carFeatureLabel: "",
-        durationDiscount: 1.0,
-        durationLabel: "Standard",
-        weekendDays: 0,
-        weekdayDays: 0,
-
-        dailyBreakdown: []
-    };
-
-    // --- 1 & 2. تحليل البيانات (Market Data & Demand) ---
-    // See how many cars are booked in this location during these dates
+    // --- 1. Gather Market Context ---
     const totalCarsInLocation = await Car.countDocuments({ location: car.location, isAvaliable: true });
     const bookedCarsInLocation = await Booking.countDocuments({
         status: { $in: ['confirmed', 'pending'] },
         pickupDate: { $lte: returnD },
         returnDate: { $gte: pickup }
     });
-
-    // Booking rate in this area
     const bookingRate = totalCarsInLocation > 0 ? (bookedCarsInLocation / totalCarsInLocation) : 0;
-
-    // Check total reservations for this specific car
     const totalHistoricalBookings = await Booking.countDocuments({ car: carId, status: 'confirmed' });
 
+    // --- 2. Build Context for AI ---
+    const contextStr = `
+CAR DETAILS:
+- Brand/Model: ${car.brand} ${car.model} (${car.year})
+- Category: ${car.category}
+- Transmission: ${car.transmission}
+- Fuel Type: ${car.fuel_type}
+- Base Price: ${basePrice} EGP/day
+- Popularity: ${totalHistoricalBookings} past bookings
 
+MARKET DEMAND (Location: ${car.location}):
+- Total Cars Available Here: ${totalCarsInLocation}
+- Cars Currently Booked Here for these dates: ${bookedCarsInLocation}
+- Local Market Saturation: ${(bookingRate * 100).toFixed(1)}%
 
-    // Car Features Demand (Manual, Diesel, Van, Low Reservations)
-    let carFeatureDiscount = 0;
-    let featureReasons = [];
+TRIP DETAILS:
+- Pickup: ${pickupDate}
+- Return: ${returnDate}
+- Total Days: ${totalDays}
 
-    if (car.transmission && car.transmission.toLowerCase() === 'manual') {
-        carFeatureDiscount += 0.05; // 5% discount
-        featureReasons.push("Manual");
-    }
-    if (car.fuel_type && car.fuel_type.toLowerCase() === 'diesel') {
-        carFeatureDiscount += 0.05; // 5% discount
-        featureReasons.push("Diesel");
-    }
-    if (car.category && car.category.toLowerCase() === 'van') {
-        carFeatureDiscount += 0.05; // 5% discount
-        featureReasons.push("Van");
-    }
-    if (totalHistoricalBookings < 3) {
-        carFeatureDiscount += 0.05; // 5% discount for new/low popularity
-        featureReasons.push("Low Reservations");
-    }
+OWNER CUSTOM RULES:
+${rules ? JSON.stringify({
+  weekendSurcharge: rules.weekendSurcharge,
+  seasonalRules: rules.seasonalRules,
+  durationDiscounts: rules.durationDiscounts
+}) : 'None'}
 
-    if (carFeatureDiscount > 0) {
-        // Cap max feature discount to 15%
-        carFeatureDiscount = Math.min(carFeatureDiscount, 0.15);
+EGYPTIAN HOLIDAY CONTEXT (Examples):
+- Eid Al-Fitr (April/March)
+- Sham El Nessim (April/May)
+- Eid Al-Adha (June/May)
+- Summer Peak (June - August)
+- Winter Off-Peak (Nov - Feb)
+    `;
 
-        breakdown.carFeatureMultiplier = 1 - carFeatureDiscount;
-        breakdown.carFeatureLabel = `Low Popularity Traits (${featureReasons.join(', ')})`;
-    }
+    const prompt = `
+You are an expert AI Pricing Strategist for CarRental Pro in Egypt.
+Your goal is to evaluate the provided context and determine the optimal pricing multipliers for this specific trip.
 
-    let totalPrice = 0;
+${contextStr}
 
-    for (let i = 0; i < totalDays; i++) {
-        const currentDay = new Date(pickup);
-        currentDay.setDate(currentDay.getDate() + i);
+INSTRUCTIONS:
+1. Analyze the Market Demand. If market saturation is high (>50%), increase the demandMultiplier.
+2. Analyze the Trip Dates. If they overlap with weekends or major Egyptian holidays/summer peak, increase the seasonalMultiplier.
+3. Analyze the Car Details. If it's a manual, van, or has very low past bookings, you might offer a slight discount (carFeatureMultiplier < 1.0).
+4. Respect the Owner's Custom Rules if any are provided.
+5. All multipliers should typically stay between 0.85 and 1.15.
 
-        let dayPrice = basePrice;
-        let dayMultiplier = 1.0;
+You MUST return ONLY a valid JSON object in this exact format:
+{
+  "seasonalMultiplier": 1.05,
+  "seasonName": "AI: Summer Peak Demand",
+  "demandMultiplier": 1.10,
+  "demandLabel": "AI: High local market demand (75% saturated)",
+  "carFeatureMultiplier": 0.95,
+  "carFeatureLabel": "AI: Manual transmission discount"
+}
+Do not include any Markdown wrappers, explanations, or text outside the JSON object.
+    `;
 
-        const monthDay = `${String(currentDay.getMonth() + 1).padStart(2, '0')}-${String(currentDay.getDate()).padStart(2, '0')}`;
-        let seasonMultiplier = 1.0;
-        let seasonName = null;
+    let aiMultipliers = {
+        seasonalMultiplier: 1.0,
+        seasonName: "Normal Season",
+        demandMultiplier: 1.0,
+        demandLabel: "Normal Demand",
+        carFeatureMultiplier: 1.0,
+        carFeatureLabel: "Standard Features"
+    };
 
-        // --- 3. ضبط الأسعار في الأجازات والمناسبات (Dynamic Holidays Multi-Year) ---
-        const currentYear = currentDay.getFullYear();
-
-        // Fixed Annual Holidays (Gregorian) - Same every year
-        const fixedHolidays = [
-            { name: "New Year & Coptic Christmas", start: "12-25", end: "01-08", multiplier: 1.15 },
-            { name: "Revolution/Police Day", start: "01-24", end: "01-26", multiplier: 1.15 },
-            { name: "June 30 Revolution", start: "06-29", end: "07-01", multiplier: 1.15 },
-            { name: "July 23 Revolution", start: "07-22", end: "07-24", multiplier: 1.15 },
-            { name: "حرب 6 اكتوبر", start: "10-05", end: "10-07", multiplier: 1.15 },
-            { name: "Summer Peak Season", start: "06-01", end: "08-31", multiplier: 1.15 },
-            { name: "Winter Off-Peak", start: "11-01", end: "02-28", multiplier: 0.85 }
-        ];
-
-        // Dynamic Holidays (Islamic & Sham El Nessim) - Shifts every year
-        const dynamicHolidays = {
-            2024: [
-                { name: "Eid Al-Fitr", start: "04-09", end: "04-14", multiplier: 1.15 },
-                { name: "Sham El Nessim", start: "05-05", end: "05-07", multiplier: 1.15 },
-                { name: "Eid Al-Adha", start: "06-15", end: "06-20", multiplier: 1.15 },
-                { name: "Islamic New Year", start: "07-07", end: "07-09", multiplier: 1.15 },
-                { name: "Prophet's Birthday", start: "09-15", end: "09-17", multiplier: 1.15 }
-            ],
-            2025: [
-                { name: "Eid Al-Fitr", start: "03-30", end: "04-04", multiplier: 1.15 },
-                { name: "Sham El Nessim", start: "04-20", end: "04-22", multiplier: 1.15 },
-                { name: "Eid Al-Adha", start: "06-05", end: "06-10", multiplier: 1.15 },
-                { name: "Islamic New Year", start: "06-26", end: "06-28", multiplier: 1.15 },
-                { name: "Prophet's Birthday", start: "09-04", end: "09-06", multiplier: 1.15 }
-            ],
-            2026: [
-                { name: "Eid Al-Fitr", start: "03-19", end: "03-24", multiplier: 1.15 },
-                { name: "Sham El Nessim", start: "04-12", end: "04-14", multiplier: 1.15 },
-                { name: "Eid Al-Adha", start: "05-26", end: "05-31", multiplier: 1.15 },
-                { name: "Islamic New Year", start: "06-15", end: "06-17", multiplier: 1.15 },
-                { name: "Prophet's Birthday", start: "08-24", end: "08-26", multiplier: 1.15 }
-            ],
-            2027: [
-                { name: "Eid Al-Fitr", start: "03-09", end: "03-14", multiplier: 1.15 },
-                { name: "Sham El Nessim", start: "05-02", end: "05-04", multiplier: 1.15 },
-                { name: "Eid Al-Adha", start: "05-15", end: "05-20", multiplier: 1.15 },
-                { name: "Islamic New Year", start: "06-05", end: "06-07", multiplier: 1.15 },
-                { name: "Prophet's Birthday", start: "08-14", end: "08-16", multiplier: 1.15 }
-            ],
-            2028: [
-                { name: "Eid Al-Fitr", start: "02-26", end: "03-03", multiplier: 1.15 },
-                { name: "Sham El Nessim", start: "04-16", end: "04-18", multiplier: 1.15 },
-                { name: "Eid Al-Adha", start: "05-04", end: "05-09", multiplier: 1.15 },
-                { name: "Islamic New Year", start: "05-24", end: "05-26", multiplier: 1.15 },
-                { name: "Prophet's Birthday", start: "08-02", end: "08-04", multiplier: 1.15 }
-            ],
-            2029: [
-                { name: "Eid Al-Fitr", start: "02-14", end: "02-19", multiplier: 1.15 },
-                { name: "Sham El Nessim", start: "04-08", end: "04-10", multiplier: 1.15 },
-                { name: "Eid Al-Adha", start: "04-23", end: "04-28", multiplier: 1.15 },
-                { name: "Islamic New Year", start: "05-13", end: "05-15", multiplier: 1.15 },
-                { name: "Prophet's Birthday", start: "07-23", end: "07-25", multiplier: 1.15 }
-            ],
-            2030: [
-                { name: "Eid Al-Fitr", start: "02-04", end: "02-09", multiplier: 1.15 },
-                { name: "Sham El Nessim", start: "04-28", end: "04-30", multiplier: 1.15 },
-                { name: "Eid Al-Adha", start: "04-12", end: "04-17", multiplier: 1.15 },
-                { name: "Islamic New Year", start: "05-03", end: "05-05", multiplier: 1.15 },
-                { name: "Prophet's Birthday", start: "07-12", end: "07-14", multiplier: 1.15 }
-            ]
-        };
-
-        const currentYearHolidays = dynamicHolidays[currentYear] || [];
-        const allHolidays = [...fixedHolidays, ...currentYearHolidays];
-
-        let hasSurcharge = false;
-        for (const holiday of allHolidays) {
-            let isMatch = false;
-            // Handle cross-year dates like 12-25 to 01-08 or 11-01 to 02-28
-            if (holiday.start > holiday.end) {
-                isMatch = (monthDay >= holiday.start || monthDay <= holiday.end);
-            } else {
-                isMatch = (monthDay >= holiday.start && monthDay <= holiday.end);
-            }
-
-            if (isMatch) {
-                if (holiday.multiplier > 1.0) {
-                    // It's a surcharge. Take the highest surcharge if there are overlaps.
-                    if (holiday.multiplier > seasonMultiplier || !hasSurcharge) {
-                        seasonMultiplier = holiday.multiplier;
-                        seasonName = holiday.name;
-                        hasSurcharge = true;
-                    }
-                } else if (holiday.multiplier < 1.0 && !hasSurcharge) {
-                    // It's a discount. Only apply if no surcharge has been found for this date.
-                    if (seasonMultiplier === 1.0 || holiday.multiplier < seasonMultiplier) {
-                        seasonMultiplier = holiday.multiplier;
-                        seasonName = holiday.name;
-                    }
-                }
-            }
-        }
-
-        // Custom rules from Database override default seasons
-        if (rules?.seasonalRules?.length) {
-            for (const season of rules.seasonalRules) {
-                if (monthDay >= season.startDate && monthDay <= season.endDate) {
-                    seasonMultiplier = season.multiplier;
-                    seasonName = season.name;
-                    break;
-                }
-            }
-        }
-
-        if (seasonMultiplier !== 1.0) {
-            dayMultiplier *= seasonMultiplier;
-            breakdown.seasonalMultiplier = seasonMultiplier;
-            breakdown.seasonName = seasonName;
-        }
-
-        // Weekend vs Weekday (أيام عادية وسط الأسبوع الطلب قليل تنزل السعر)
-        const dayOfWeek = currentDay.getDay();
-        if (dayOfWeek === 5 || dayOfWeek === 6) {
-            // Weekend (Friday, Saturday)
-            dayMultiplier *= (rules?.weekendSurcharge || 1.15);
-            breakdown.weekendDays++;
-        } else {
-            // Weekday (Sunday to Thursday) - Low demand during week
-            // Example 1000 -> 800 if no other high demand factor is applied
-            if (seasonMultiplier === 1.0 && breakdown.demandMultiplier <= 1.0) {
-                dayMultiplier *= 0.8; // Apply 20% discount on normal weekdays
-            }
-            breakdown.weekdayDays++;
-        }
-
-        dayPrice = basePrice * dayMultiplier * breakdown.demandMultiplier * breakdown.carFeatureMultiplier;
-
-        breakdown.dailyBreakdown.push({
-            date: currentDay.toISOString().split('T')[0],
-            price: Math.round(dayPrice),
-            isWeekend: dayOfWeek === 5 || dayOfWeek === 6
+    // --- 3. Call AI ---
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'llama-3.1-8b-instant',
+            messages: [{ role: 'user', content: prompt }],
+            response_format: { type: "json_object" },
+            temperature: 0.2, // Low temp for more deterministic math/logic
         });
 
-        totalPrice += dayPrice;
+        const aiResponseText = completion.choices[0].message.content;
+        const parsed = JSON.parse(aiResponseText);
+        
+        // Merge AI results safely
+        if (parsed.seasonalMultiplier) aiMultipliers.seasonalMultiplier = Number(parsed.seasonalMultiplier);
+        if (parsed.seasonName) aiMultipliers.seasonName = parsed.seasonName;
+        if (parsed.demandMultiplier) aiMultipliers.demandMultiplier = Number(parsed.demandMultiplier);
+        if (parsed.demandLabel) aiMultipliers.demandLabel = parsed.demandLabel;
+        if (parsed.carFeatureMultiplier) aiMultipliers.carFeatureMultiplier = Number(parsed.carFeatureMultiplier);
+        if (parsed.carFeatureLabel) aiMultipliers.carFeatureLabel = parsed.carFeatureLabel;
+        
+    } catch (error) {
+        console.error("AI Pricing Engine Failed, falling back to 1.0 multipliers:", error);
     }
 
-    // Duration discount
-    if (rules?.durationDiscounts?.length) {
-        for (const tier of rules.durationDiscounts.sort((a, b) => b.minDays - a.minDays)) {
-            if (totalDays >= tier.minDays && (!tier.maxDays || totalDays <= tier.maxDays)) {
-                breakdown.durationDiscount = 1 - tier.discount;
-                breakdown.durationLabel = `${tier.discount * 100}% off (${totalDays} days)`;
-                totalPrice *= (1 - tier.discount);
-                break;
-            }
-        }
-    }
+    // --- 4. Math Calculation (The Calculator) ---
+    // Apply multipliers to base price
+    let calculatedDailyPrice = basePrice * 
+                               aiMultipliers.seasonalMultiplier * 
+                               aiMultipliers.demandMultiplier * 
+                               aiMultipliers.carFeatureMultiplier;
 
+    let totalPrice = calculatedDailyPrice * totalDays;
 
-    // --- Price Caps (-15% min, +15% max) ---
+    // Apply strict +/- 15% safety cap
     const minAllowedPrice = basePrice * 0.85 * totalDays;
     const maxAllowedPrice = basePrice * 1.15 * totalDays;
     
-    breakdown.capped = false;
+    let cappedStatus = false;
 
     if (totalPrice > maxAllowedPrice) {
         totalPrice = maxAllowedPrice;
-        breakdown.capped = "max";
+        cappedStatus = "max";
     } else if (totalPrice < minAllowedPrice) {
         totalPrice = minAllowedPrice;
-        breakdown.capped = "min";
+        cappedStatus = "min";
     }
 
     const taxAmount = Math.round(totalPrice * 0.10);
     totalPrice += taxAmount;
-    breakdown.taxAmount = taxAmount;
 
     return {
         totalPrice: Math.round(totalPrice),
         averagePricePerDay: Math.round(totalPrice / totalDays),
-        breakdown
+        breakdown: {
+            basePrice,
+            totalDays,
+            ...aiMultipliers,
+            capped: cappedStatus,
+            taxAmount: Math.round(taxAmount)
+        }
     };
 };
