@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import Car from '../models/Car.js';
 import Booking from '../models/Booking.js';
+import User from '../models/User.js';
 
 // Initialize Groq client using OpenAI-compatible API
 const openai = new OpenAI({
@@ -220,5 +221,133 @@ export const getFAQ = async (req, res) => {
     res.json({ success: true, faqs });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to load FAQs' });
+  }
+};
+
+// ─── AI Smart Search for Recommended Cars Bar ─────────────────────────────────
+export const getSmartRecommendations = async (req, res) => {
+  try {
+    const { message, userId } = req.body;
+
+    // Fetch all available cars
+    const cars = await Car.find({ status: 'approved', isAvaliable: true }).lean();
+    if (!cars.length) {
+      return res.json({ success: true, recommendedCars: [] });
+    }
+
+    let userContextStr = "The user is browsing as a Guest. No past booking or viewing history available.";
+    
+    // Fetch personalized data if userId is provided
+    if (userId) {
+      const user = await User.findById(userId).populate('viewedCars').lean();
+      
+      if (user) {
+        // Compute viewed car preferences
+        const viewedCategories = {};
+        if (user.viewedCars && user.viewedCars.length > 0) {
+          user.viewedCars.forEach(car => {
+            if (car && car.category) {
+              viewedCategories[car.category] = (viewedCategories[car.category] || 0) + 1;
+            }
+          });
+        }
+        
+        const topCategories = Object.entries(viewedCategories)
+          .sort((a, b) => b[1] - a[1])
+          .map(e => e[0])
+          .slice(0, 2); // Get top 2 categories
+
+        // Fetch past bookings to compute typical budget
+        const pastBookings = await Booking.find({ user: userId }).populate('car').lean();
+        let avgBudgetStr = "Unknown";
+        let lastBookedCarStr = "None";
+        
+        if (pastBookings.length > 0) {
+          const totalSpent = pastBookings.reduce((sum, b) => sum + (b.priceBreakdown?.averagePricePerDay || (b.price / (b.duration || 1))), 0);
+          const avgDaily = Math.round(totalSpent / pastBookings.length);
+          avgBudgetStr = `${avgDaily} EGP/day`;
+          
+          // Assuming bookings are ordered chronologically by default, or we take the last one in the array
+          const lastBooking = pastBookings[pastBookings.length - 1];
+          if (lastBooking && lastBooking.car) {
+            lastBookedCarStr = `${lastBooking.car.brand} ${lastBooking.car.model} (${lastBooking.car.category})`;
+          }
+        }
+
+        userContextStr = `
+USER PREFERENCES AND HISTORY:
+- Top Viewed Categories: ${topCategories.length > 0 ? topCategories.join(', ') : 'None yet'}
+- Typical Budget (Based on past bookings): ${avgBudgetStr}
+- Last Booked Car: ${lastBookedCarStr}
+`;
+      }
+    }
+
+    // Prepare lightweight inventory data for the AI to pick from
+    const inventoryData = cars.map(c => 
+      `[ID: ${c._id}] ${c.brand} ${c.model} (${c.year}) | Category: ${c.category} | Fuel: ${c.fuel_type} | Trans: ${c.transmission} | Seats: ${c.seating_capacity} | Price: ${c.pricePerDay} EGP/day`
+    ).join('\\n');
+
+    const prompt = `
+You are an AI Recommendation Engine for CarRental Pro.
+Your task is to match the user's natural language request to exactly 8 suitable cars from our inventory.
+
+${userContextStr}
+
+USER'S REQUEST: "${message || 'No specific request. Just recommend the best cars for me based on my preferences and budget.'}"
+
+INVENTORY:
+${inventoryData}
+
+INSTRUCTIONS:
+1. Analyze the USER'S REQUEST. 
+2. If USER PREFERENCES AND HISTORY is available, use it as a primary ranking factor (e.g., if they usually book SUVs, prioritize SUVs near their Typical Budget).
+3. Select up to 8 of the best matching cars from the INVENTORY.
+4. Return the result ONLY as a JSON object in this exact format:
+{
+  "recommendedIds": ["id1", "id2", ... up to 8],
+  "aiTitle": "A catchy, personalized title summarizing the recommendation (e.g., '✨ AI Picks: Perfect SUVs for your Family Trip', or '✨ Curated For You' if no specific request)"
+}
+Do not include any other text or markdown wrappers. Only valid JSON.
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: "json_object" },
+      temperature: 0.3, // Lower temperature for more factual matching
+    });
+
+    const aiResponseText = completion.choices[0].message.content;
+    let aiResponse;
+    try {
+      aiResponse = JSON.parse(aiResponseText);
+    } catch (e) {
+      console.error("Failed to parse AI JSON response:", aiResponseText);
+      return res.status(500).json({ success: false, error: 'AI returned invalid format' });
+    }
+
+    // Fetch the full car objects based on the AI's selected IDs
+    let recommendedCars = [];
+    if (aiResponse.recommendedIds && Array.isArray(aiResponse.recommendedIds) && aiResponse.recommendedIds.length > 0) {
+      // Map IDs back to full car objects, preserving the AI's order if possible
+      recommendedCars = aiResponse.recommendedIds.map(id => cars.find(c => c._id.toString() === id)).filter(Boolean);
+    }
+
+    // Fallback: If AI didn't find any or broke, return top popularity
+    if (recommendedCars.length === 0) {
+      recommendedCars = cars.sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0)).slice(0, 8);
+      aiResponse.aiTitle = "✨ Recommended Cars";
+    }
+
+    res.json({
+      success: true,
+      aiTitle: aiResponse.aiTitle || "✨ Recommended Cars",
+      recommendedCars
+    });
+
+  } catch (error) {
+    console.error('Smart Recommendation error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to generate recommendations' });
   }
 };

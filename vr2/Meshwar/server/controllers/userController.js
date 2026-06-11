@@ -546,3 +546,38 @@ export const resetPassword = async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 }
+
+// Log Viewed Car
+export const logViewedCar = async (req, res) => {
+    try {
+        const { _id } = req.user;
+        const { carId } = req.body;
+
+        if (!carId) {
+            return res.json({ success: false, message: "Car ID is required" });
+        }
+
+        const user = await User.findById(_id);
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+
+        // Remove the carId if it already exists to move it to the end
+        user.viewedCars = user.viewedCars.filter(id => id.toString() !== carId);
+        
+        // Add to the end
+        user.viewedCars.push(carId);
+
+        // Keep only the last 20 viewed cars
+        if (user.viewedCars.length > 20) {
+            user.viewedCars = user.viewedCars.slice(-20);
+        }
+
+        await user.save();
+        res.json({ success: true, message: "Car view logged successfully" });
+
+    } catch (error) {
+        console.error("Log viewed car error:", error.message);
+        res.json({ success: false, message: error.message });
+    }
+}

@@ -171,6 +171,21 @@ if (id) {
       fetchPrice();
     }, [car, pickupDate, returnDate, id, axios]);
 
+    // Log the viewed car for AI Recommendations
+    useEffect(() => {
+      const logView = async () => {
+        if (id && userData) {
+          try {
+            // We use standard axios context which includes auth headers
+            await axios.post('/api/user/log-view', { carId: id });
+          } catch (error) {
+            console.error("Failed to log viewed car:", error);
+          }
+        }
+      };
+      logView();
+    }, [id, userData, axios]);
+
     return car ? (
       <div className='px-6 md:px-16 lg:px-24 xl:px-32 mt-16'>
 

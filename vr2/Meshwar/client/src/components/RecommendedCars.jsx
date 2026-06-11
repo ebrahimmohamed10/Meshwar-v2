@@ -2,23 +2,48 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { assets } from '../assets/assets';
+import toast from 'react-hot-toast';
 
 const RecommendedCars = () => {
-  const { currency, cars } = useAppContext();
+  const { currency, cars, axios, user } = useAppContext();
   const [recommendedCars, setRecommendedCars] = useState([]);
+  const [aiTitle, setAiTitle] = useState("✨ Recommended Cars");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
   const scrollRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (cars && cars.length > 0) {
-      // Sort cars by bookingCount descending
-      const sortedByPopularity = [...cars].sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0));
-      // Get sub-array of top 8 highest booked cars
-      setRecommendedCars(sortedByPopularity.slice(0, 8));
-    }
-  }, [cars]);
+    let isMounted = true;
+    
+    const fetchDefaultRecommendations = async () => {
+      try {
+        const payload = user ? { userId: user._id, message: '' } : { message: '' };
+        const { data } = await axios.post('/api/chatbot/smart-recommendations', payload);
+        
+        if (data.success && isMounted) {
+          setRecommendedCars(data.recommendedCars);
+          if (data.aiTitle) setAiTitle(data.aiTitle);
+        }
+      } catch (error) {
+        console.error("AI Recommendation failed, falling back to popularity", error);
+        // Fallback
+        if (cars && cars.length > 0 && isMounted) {
+          const sortedByPopularity = [...cars].sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0));
+          setRecommendedCars(sortedByPopularity.slice(0, 8));
+          setAiTitle("Recommended Cars");
+        }
+      }
+    };
 
-  const [isHovered, setIsHovered] = useState(false);
+    if (cars && cars.length > 0) {
+      fetchDefaultRecommendations();
+    }
+
+    return () => { isMounted = false; };
+  }, [cars, user, axios]);
 
   // Auto-scroll logic
   useEffect(() => {
@@ -27,22 +52,18 @@ const RecommendedCars = () => {
     const intervalId = setInterval(() => {
       if (scrollRef.current && scrollRef.current.children.length > 0) {
         const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-        // Check if we reached the end (with a small 5px buffer for rounding errors)
         if (scrollLeft + clientWidth >= scrollWidth - 5) {
-          // Scroll back to the beginning smoothly
           scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
         } else {
-          // Calculate the width of a single card + the gap between them (gap-6 = 24px)
           const scrollAmount = scrollRef.current.children[0].offsetWidth + 24; 
           scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
         }
       }
-    }, 3000); // Scroll every 3 seconds
+    }, 3000); 
 
-    return () => clearInterval(intervalId); // Cleanup on unmount
+    return () => clearInterval(intervalId); 
   }, [recommendedCars, isHovered]);
 
-  // Function to handle left/right scrolling
   const scroll = (direction) => {
     if (scrollRef.current && scrollRef.current.children.length > 0) {
       const scrollAmount = scrollRef.current.children[0].offsetWidth + 24; 
@@ -53,15 +74,89 @@ const RecommendedCars = () => {
     }
   };
 
-  if (recommendedCars.length === 0) return null;
+  const handleSearch = async (e, query = searchQuery) => {
+    if (e) e.preventDefault();
+    if (!query.trim()) return;
+    
+    setIsSearching(true);
+    try {
+      const payload = { message: query };
+      if (user) payload.userId = user._id;
+
+      const { data } = await axios.post('/api/chatbot/smart-recommendations', payload);
+      
+      if (data.success) {
+        setRecommendedCars(data.recommendedCars);
+        setAiTitle(data.aiTitle || "✨ AI Picks");
+      } else {
+        toast.error("Failed to find recommendations.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Something went wrong with the AI search.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleVibeClick = (vibe) => {
+    setSearchQuery(vibe);
+    handleSearch(null, vibe);
+  };
+
+  if (cars.length === 0) return null;
 
   return (
-    <div className="w-full bg-white py-10 border-b border-gray-100 overflow-hidden">
-      {/* Container with extra horizontal padding for arrow space */}
+    <div className="w-full bg-gradient-to-b from-gray-50 to-white py-12 border-b border-gray-100 overflow-hidden">
       <div className="max-w-[1400px] mx-auto px-12 md:px-24">
         
-        {/* Header */}
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Recommended Cars</h2>
+        {/* AI Search Header Section */}
+        <div className="mb-10 max-w-3xl">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">{aiTitle}</h2>
+          
+          <form onSubmit={handleSearch} className="relative mb-4">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+              <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+            </div>
+            <input 
+              type="text" 
+              className="block w-full p-4 pl-12 pr-32 text-sm text-gray-900 border border-gray-200 rounded-2xl bg-white shadow-sm focus:ring-primary focus:border-primary outline-none transition-shadow hover:shadow-md" 
+              placeholder="Describe your trip, and let AI find your perfect ride..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isSearching}
+            />
+            <button 
+              type="submit" 
+              disabled={isSearching || !searchQuery.trim()}
+              className="text-white absolute right-2.5 bottom-2.5 bg-primary hover:bg-primary-dull focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-xl text-sm px-5 py-2 transition-colors disabled:bg-gray-400"
+            >
+              {isSearching ? 'Searching...' : 'Search'}
+            </button>
+          </form>
+
+          {/* Quick Filters / Vibes */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: "💼 Business Trip", query: "I need a professional car for a business trip" },
+              { label: "🏖️ Family Vacation", query: "Looking for a spacious car for a family vacation to the beach" },
+              { label: "💰 Budget Friendly", query: "Show me the cheapest, most economical cars" },
+              { label: "🚀 Need for Speed", query: "I want something fast, sporty, and fun to drive" }
+            ].map((vibe, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleVibeClick(vibe.query)}
+                disabled={isSearching}
+                className="py-1.5 px-3 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-primary transition-colors focus:z-10 focus:ring-2 focus:ring-primary"
+              >
+                {vibe.label}
+              </button>
+            ))}
+          </div>
+        </div>
         
         {/* Slider Container with Relative Positioning */}
         <div 
@@ -70,7 +165,7 @@ const RecommendedCars = () => {
           onMouseLeave={() => setIsHovered(false)}
         >
           
-          {/* Left Arrow - Positioned completely outside the cards */}
+          {/* Left Arrow */}
           {recommendedCars.length > 3 && (
             <button 
               onClick={() => scroll('left')}
@@ -87,8 +182,13 @@ const RecommendedCars = () => {
             ref={scrollRef} 
             className="flex overflow-x-auto gap-6 pb-6 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
           >
+            {recommendedCars.length === 0 && !isSearching && (
+              <div className="w-full text-center py-12 text-gray-500">
+                No cars found matching your request. Try a different search!
+              </div>
+            )}
+
             {recommendedCars.map((car) => (
-              // Card component with original styling
               <div 
                 key={car._id} 
                 onClick={() => { navigate(`/car-details/${car._id}`); window.scrollTo(0, 0); }}
@@ -125,7 +225,7 @@ const RecommendedCars = () => {
                     {car.year}
                   </div>
                   
-                  {/* Detailed Grid Icons (Fixed) */}
+                  {/* Detailed Grid Icons */}
                   <div className="grid grid-cols-2 gap-2 mb-6 mt-4">
                     <div className="flex items-center gap-2 bg-gray-50 p-2.5 rounded-lg text-xs text-gray-500 font-medium">
                       <img src={assets.users_icon} alt="" className="h-4 w-4 opacity-50" />
@@ -145,7 +245,7 @@ const RecommendedCars = () => {
                     </div>
                   </div>
 
-                  {/* Booking Link - Ensures it opens at the top like Featured Vehicles */}
+                  {/* Booking Link */}
                   <div 
                     className="block w-full text-center border border-[#16A34A] text-[#16A34A] font-bold py-2.5 rounded-xl hover:bg-[#16A34A] hover:text-white transition-colors duration-300 cursor-pointer"
                   >
@@ -156,7 +256,7 @@ const RecommendedCars = () => {
             ))}
           </div>
 
-          {/* Right Arrow - Positioned completely outside the cards */}
+          {/* Right Arrow */}
           {recommendedCars.length > 3 && (
             <button 
               onClick={() => scroll('right')}

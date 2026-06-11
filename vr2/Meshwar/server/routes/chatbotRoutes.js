@@ -1,5 +1,5 @@
 import express from 'express';
-import { chatWithBot, getQuickActions, getFAQ } from '../controllers/chatbotController.js';
+import { chatWithBot, getQuickActions, getFAQ, getSmartRecommendations } from '../controllers/chatbotController.js';
 
 const router = express.Router();
 
@@ -7,5 +7,6 @@ const router = express.Router();
 router.post('/chat', chatWithBot);
 router.get('/quick-actions', getQuickActions);
 router.get('/faq', getFAQ);
+router.post('/smart-recommendations', getSmartRecommendations);
 
 export default router;

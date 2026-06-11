@@ -1,5 +1,5 @@
 import express from "express";
-import { getCars, getUserData, loginUser, registerUser, updateUserProfile, upgradeToPremium, verifyUserProfile, withdrawWallet, getUserWithdrawals, forgotPassword, resetPassword } from "../controllers/userController.js";
+import { getCars, getUserData, loginUser, registerUser, updateUserProfile, upgradeToPremium, verifyUserProfile, withdrawWallet, getUserWithdrawals, forgotPassword, resetPassword, logViewedCar } from "../controllers/userController.js";
 import { protect } from "../middleware/auth.js";
 import upload from "../middleware/multer.js";
 
@@ -16,5 +16,6 @@ userRouter.post('/upgrade-premium', protect, upgradeToPremium)
 userRouter.post('/verify-profile', protect, verifyUserProfile)
 userRouter.post('/withdraw', protect, withdrawWallet)
 userRouter.get('/withdrawals', protect, getUserWithdrawals)
+userRouter.post('/log-view', protect, logViewedCar)
 
 export default userRouter;

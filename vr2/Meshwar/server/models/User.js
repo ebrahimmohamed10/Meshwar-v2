@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema({
     resetCodeExpiry: { type: Date, default: null },
     subscriptionPlan: { type: String, default: null },
     subscriptionExpiryDate: { type: Date, default: null },
+    viewedCars: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Car' }]
 }, { timestamps: true })
 
 const User = mongoose.model('User', userSchema)
