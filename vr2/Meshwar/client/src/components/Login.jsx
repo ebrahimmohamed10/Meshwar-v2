@@ -119,7 +119,7 @@ const FloatingInput = ({ id, label, type = "text", value, onChange, isPassword, 
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 required
-                className={`w-full px-3.5 pt-6 pb-2 rounded-xl border text-sm text-gray-900 outline-none bg-white transition-all duration-200 ${
+                className={`w-full px-3.5 pt-6 pb-2 rounded-xl border text-sm text-gray-900 outline-none bg-white transition-all duration-200 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden ${
                     focused 
                         ? 'border-primary ring-2 ring-primary/10 shadow-sm' 
                         : 'border-gray-200 hover:border-gray-300'
