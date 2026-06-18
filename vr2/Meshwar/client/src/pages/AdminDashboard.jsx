@@ -11,7 +11,8 @@ const RevenueIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentC
 const AdminDashboard = () => {
   const { adminUser } = useOutletContext() || {};
   const [stats, setStats] = useState({
-    totalUsers: 0, totalCars: 0, totalBookings: 0, totalRevenue: 0, monthlyRevenue: 0, recentBookings: []
+    totalUsers: 0, totalCars: 0, totalBookings: 0, totalRevenue: 0, monthlyRevenue: 0, recentBookings: [],
+    verifiedUsers: 0, pendingVerifications: 0, rejectedVerifications: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -39,11 +40,36 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <StatCard title="Total Users" value={stats.totalUsers} icon={<UsersIcon />} color="blue" loading={loading} />
         <StatCard title="Total Inventory" value={stats.totalCars} icon={<CarIcon />} color="indigo" loading={loading} />
         <StatCard title="Global Bookings" value={stats.totalBookings} icon={<BookingIcon />} color="amber" loading={loading} />
         <StatCard title="Total Revenue" value={stats.totalRevenue.toLocaleString() + ' EGP'} icon={<RevenueIcon />} color="emerald" loading={loading} />
+      </div>
+
+      {/* Verification Quick stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="bg-white px-5 py-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <span className="text-gray-500 font-medium">Verified Users</span>
+          </div>
+          <span className="font-bold text-gray-900">{loading ? '...' : stats.verifiedUsers || 0}</span>
+        </div>
+        <div className="bg-white px-5 py-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-gray-500 font-medium">Pending Approvals</span>
+          </div>
+          <span className="font-bold text-gray-900">{loading ? '...' : stats.pendingVerifications || 0}</span>
+        </div>
+        <div className="bg-white px-5 py-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+            <span className="text-gray-500 font-medium">Rejected Submissions</span>
+          </div>
+          <span className="font-bold text-gray-900">{loading ? '...' : stats.rejectedVerifications || 0}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">

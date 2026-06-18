@@ -78,6 +78,10 @@ export const getDashboardStats = async (req, res) => {
 
     // Updated this part to include more details
 
+    const verifiedUsers = await User.countDocuments({ verificationStatus: 'verified' });
+    const pendingVerifications = await User.countDocuments({ verificationStatus: 'pending' });
+    const rejectedVerifications = await User.countDocuments({ verificationStatus: 'rejected' });
+
     const recentBookings = await Booking.find()
       .populate('car')   // هنجيب كل بيانات العربية
       .populate('user')  // هنجيب كل بيانات العميل
@@ -92,7 +96,10 @@ export const getDashboardStats = async (req, res) => {
         totalBookings,
         totalRevenue,
         monthlyRevenue,
-        recentBookings
+        recentBookings,
+        verifiedUsers,
+        pendingVerifications,
+        rejectedVerifications
       }
     });
   } catch (error) {
@@ -234,6 +241,150 @@ export const getPendingFinancesData = async (req, res) => {
       success: true,
       totalHeldFunds,
       bookings: pendingBookings
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const approveUserVerification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const dateNow = new Date();
+    const historyEntry = {
+      date: dateNow,
+      status: 'verified',
+      action: 'Admin Manual Override',
+      reason: 'Approved manually by admin.'
+    };
+
+    user.verificationStatus = 'verified';
+    user.verificationError = '';
+    user.verificationReport = `### Admin Manual Audit\n\nApproved manually by administrator on ${new Date().toLocaleDateString()}.`;
+    user.verifiedAt = dateNow;
+    user.verificationHistory.push(historyEntry);
+    await user.save();
+
+    res.json({ success: true, message: "User verification approved manually", user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const rejectUserVerification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const rejectReason = reason || 'Admin manual rejection';
+    const historyEntry = {
+      date: new Date(),
+      status: 'rejected',
+      action: 'Admin Manual Override',
+      reason: rejectReason
+    };
+
+    user.verificationStatus = 'rejected';
+    user.verificationError = rejectReason;
+    user.verificationReport = `### Admin Manual Audit\n\nRejected manually by administrator on ${new Date().toLocaleDateString()}.\n\n**Reason**: ${rejectReason}`;
+    user.verificationHistory.push(historyEntry);
+    await user.save();
+
+    res.json({ success: true, message: "User verification rejected manually", user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const unlockUserVerification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    user.verificationAttempts = 0;
+    user.verificationLocked = false;
+    user.verificationHistory.push({
+      date: new Date(),
+      status: user.verificationStatus,
+      action: 'Admin Unlock Override',
+      reason: 'Attempts counter reset and lockout lifted by administrator.'
+    });
+    await user.save();
+
+    res.json({ success: true, message: "User verification attempts unlocked", user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getVerificationStats = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const verifiedUsers = await User.countDocuments({ verificationStatus: 'verified' });
+    const pendingVerifications = await User.countDocuments({ verificationStatus: 'pending' });
+    const rejectedVerifications = await User.countDocuments({ verificationStatus: 'rejected' });
+    const lockedUsers = await User.countDocuments({ verificationLocked: true });
+    const unverifiedUsers = await User.countDocuments({ 
+      $or: [
+        { verificationStatus: 'unverified' },
+        { verificationStatus: { $exists: false } }
+      ] 
+    });
+
+    // Average attempts among users who have attempted
+    const attemptedUsers = await User.find({ verificationAttempts: { $gt: 0 } });
+    const totalAttempts = attemptedUsers.reduce((sum, u) => sum + (u.verificationAttempts || 0), 0);
+    const avgAttempts = attemptedUsers.length > 0 ? (totalAttempts / attemptedUsers.length).toFixed(1) : 0;
+
+    // Collect global logs from all users
+    const allUsersWithLogs = await User.find({ "verificationHistory.0": { $exists: true } })
+      .select('name email verificationHistory');
+
+    const globalLogs = [];
+    allUsersWithLogs.forEach(user => {
+      user.verificationHistory.forEach(log => {
+        globalLogs.push({
+          userId: user._id,
+          userName: user.name,
+          userEmail: user.email,
+          date: log.date,
+          status: log.status,
+          action: log.action,
+          reason: log.reason
+        });
+      });
+    });
+
+    // Sort global logs by date descending
+    globalLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        stats: {
+          totalUsers,
+          verifiedUsers,
+          pendingVerifications,
+          rejectedVerifications,
+          lockedUsers,
+          unverifiedUsers,
+          avgAttempts,
+          attemptedUsersCount: attemptedUsers.length
+        },
+        logs: globalLogs.slice(0, 100) // limit to recent 100 entries
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -73,19 +73,26 @@ const Navbar = () => {
                     <div key={index} className="flex items-center gap-2">
                         <Link
                             to={link.path}
-                            className={`text-sm font-medium relative group transition-colors duration-200 ${location.pathname === link.path
+                            className={`text-sm font-medium relative group transition-colors duration-200 flex items-center gap-1 ${location.pathname === link.path
                                 ? 'text-primary'
                                 : 'text-gray-600 hover:text-primary'
                                 }`}
                         >
                             {link.name}
+                            {link.name === 'My Account' && user?.verificationStatus === 'verified' && (
+                                <span className="text-emerald-600" title="Verified Identity Profile">
+                                    <svg className="w-4 h-4 fill-emerald-100/50" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.745 3.745 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                                    </svg>
+                                </span>
+                            )}
                             <span className={`absolute -bottom-0.5 left-0 h-0.5 bg-primary rounded-full transition-all duration-300 ${location.pathname === link.path ? 'w-full' : 'w-0 group-hover:w-full'
                                 }`} />
                         </Link>
                     </div>
                 ))}
             </div>
-
+ 
             {/* Search + actions */}
             <div className="hidden lg:flex items-center gap-4">
                 {/* Search bar */}
@@ -130,32 +137,39 @@ const Navbar = () => {
                     {user ? 'Logout' : 'Login'}
                 </motion.button>
             </div>
-
-            {/* Mobile hamburger */}
-            <button className='sm:hidden cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors' aria-label="Menu" onClick={() => setOpen(!open)}>
-                <img src={open ? assets.close_icon : assets.menu_icon} alt="menu" className="w-5 h-5" />
-            </button>
-
-            {/* Mobile menu */}
-            <AnimatePresence>
-                {open && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.25 }}
-                        className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-xl sm:hidden px-6 py-6 flex flex-col gap-4"
-                    >
-                        {menuLinks
-                            .filter(link => user ? true : !['Wallet', 'My Account'].includes(link.name))
-                            .map((link, i) => (
-                            <div key={i} className="flex items-center justify-between py-1">
-                                <Link to={link.path} onClick={() => setOpen(false)}
-                                    className="text-gray-700 font-medium hover:text-primary transition-colors">
-                                    {link.name}
-                                </Link>
-                            </div>
-                        ))}
+ 
+                {/* Mobile hamburger */}
+                <button className='sm:hidden cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors' aria-label="Menu" onClick={() => setOpen(!open)}>
+                    <img src={open ? assets.close_icon : assets.menu_icon} alt="menu" className="w-5 h-5" />
+                </button>
+ 
+                {/* Mobile menu */}
+                <AnimatePresence>
+                    {open && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.25 }}
+                            className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-xl sm:hidden px-6 py-6 flex flex-col gap-4"
+                        >
+                            {menuLinks
+                                .filter(link => user ? true : !['Wallet', 'My Account'].includes(link.name))
+                                .map((link, i) => (
+                                <div key={i} className="flex items-center justify-between py-1">
+                                    <Link to={link.path} onClick={() => setOpen(false)}
+                                        className="text-gray-700 font-medium hover:text-primary transition-colors flex items-center gap-1.5">
+                                        {link.name}
+                                        {link.name === 'My Account' && user?.verificationStatus === 'verified' && (
+                                            <span className="text-emerald-600">
+                                                <svg className="w-4 h-4 fill-emerald-100/50" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.745 3.745 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                                                </svg>
+                                            </span>
+                                        )}
+                                    </Link>
+                                </div>
+                            ))}
                         <div className="flex items-center gap-2 bg-gray-100 px-4 py-2.5 rounded-full">
                             <img src={assets.search_icon} alt="" className="w-4 h-4 opacity-50" />
                             <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}

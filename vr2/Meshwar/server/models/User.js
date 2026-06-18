@@ -26,6 +26,16 @@ const userSchema = new mongoose.Schema({
     verificationStatus: { type: String, enum: ['unverified', 'pending', 'verified', 'rejected'], default: 'unverified' },
     verificationReport: { type: String, default: '' },
     verificationError: { type: String, default: '' },
+    verificationHistory: [{
+        date: { type: Date, default: Date.now },
+        status: String,
+        action: String,
+        reason: String
+    }],
+    verificationAttempts: { type: Number, default: 0 },
+    verificationLocked: { type: Boolean, default: false },
+    lastVerificationAttempt: { type: Date, default: null },
+    verifiedAt: { type: Date, default: null },
     isPremium: { type: Boolean, default: false },
     wallet: { type: Number, default: 0 },
     ownerWallet: { type: Number, default: 0 },

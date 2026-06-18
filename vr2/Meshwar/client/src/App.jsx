@@ -23,6 +23,7 @@ import { useAppContext } from './context/AppContext'
 import { AnimatePresence } from 'motion/react'
 import AdminDashboard from './pages/AdminDashboard'
 import ManageUsers from './pages/ManageUsers'
+import AdminVerificationStats from './pages/AdminVerificationStats'
 
 import AdminManageCars from './pages/AdminManageCars'
 import AdminTotalBookings from './pages/AdminTotalBookings'
@@ -72,6 +73,7 @@ const App = () => {
           <Route path='/admin' element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<ManageUsers />} />
+            <Route path="verification-stats" element={<AdminVerificationStats />} />
             <Route path="cars" element={<AdminManageCars />} />
             <Route path="bookings" element={<AdminTotalBookings />} />
             <Route path="profits" element={<AdminProfits />} />

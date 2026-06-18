@@ -6,6 +6,7 @@ import imagekit from "../configs/imageKit.js";
 import fs from "fs";
 import OpenAI from "openai";
 import Withdrawal from "../models/Withdrawal.js";
+import { sendVerificationEmail } from "../utils/email.js";
 
 
 // Generate JWT Token
@@ -176,6 +177,20 @@ export const updateUserProfile = async (req, res) => {
             updateData.licenseBack = await uploadToImageKit(licenseBackFile, '/user_docs')
         }
 
+        // Reset verification if any verification-sensitive fields changed
+        const existingUser = await User.findById(_id)
+        const verificationSensitiveChanged =
+            idCardFrontFile || idCardBackFile || licenseFrontFile || licenseBackFile ||
+            (idNumber !== (existingUser.idNumber || '')) ||
+            (licenseNumber !== (existingUser.licenseNumber || '')) ||
+            (dob !== (existingUser.dob || ''))
+
+        if (verificationSensitiveChanged && existingUser.verificationStatus !== 'unverified') {
+            updateData.verificationStatus = 'unverified'
+            updateData.verificationReport = ''
+            updateData.verificationError = ''
+        }
+
         await User.findByIdAndUpdate(_id, updateData)
 
         res.json({ success: true, message: "Profile Updated" })
@@ -238,7 +253,25 @@ export const verifyUserProfile = async (req, res) => {
             return res.json({ success: false, message: "User not found" })
         }
 
-        // Check if all four documents are uploaded
+        // 1. Account Lockout Check
+        if (user.verificationLocked) {
+            return res.json({
+                success: false,
+                message: "Your account verification is locked due to too many failed attempts (Max 5). Please contact support."
+            })
+        }
+
+        // 2. Cooldown check (Rate Limit)
+        const COOLDOWN_MS = 30 * 60 * 1000 // 30 minutes
+        if (user.lastVerificationAttempt && (Date.now() - new Date(user.lastVerificationAttempt).getTime() < COOLDOWN_MS)) {
+            const timeLeft = Math.ceil((COOLDOWN_MS - (Date.now() - new Date(user.lastVerificationAttempt).getTime())) / 1000 / 60)
+            return res.json({
+                success: false,
+                message: `Verification rate limit: Please wait ${timeLeft} minutes before trying again.`
+            })
+        }
+
+        // 3. Check if all four documents are uploaded
         if (!user.idCardFront || !user.idCardBack || !user.licenseFront || !user.licenseBack) {
             return res.json({ 
                 success: false, 
@@ -246,7 +279,7 @@ export const verifyUserProfile = async (req, res) => {
             })
         }
 
-        // Check if other profile fields are filled
+        // 4. Check if other profile fields are filled
         if (!user.name || user.name.trim() === '' || 
             !user.dob || user.dob === 'Not Selected' || 
             !user.idNumber || user.idNumber === 'Not Selected' || 
@@ -257,11 +290,33 @@ export const verifyUserProfile = async (req, res) => {
             })
         }
 
-        // Update status to pending
+        // 5. Document Uniqueness Check
+        const duplicateUser = await User.findOne({
+            _id: { $ne: _id },
+            verificationStatus: 'verified',
+            $or: [
+                { idNumber: user.idNumber },
+                { licenseNumber: user.licenseNumber }
+            ]
+        })
+        if (duplicateUser) {
+            return res.json({
+                success: false,
+                message: "This ID number or Driving License number is already verified on another account."
+            })
+        }
+
+        const newAttempts = (user.verificationAttempts || 0) + 1
+        const shouldLock = newAttempts >= 5
+
+        // Update status to pending and save attempts
         await User.findByIdAndUpdate(_id, { 
             verificationStatus: 'pending',
             verificationError: '',
-            verificationReport: ''
+            verificationReport: '',
+            verificationAttempts: newAttempts,
+            verificationLocked: shouldLock,
+            lastVerificationAttempt: new Date()
         })
 
         // Call Groq Vision
@@ -272,78 +327,136 @@ export const verifyUserProfile = async (req, res) => {
 
         const currentDateStr = new Date().toLocaleDateString();
 
-        const response = await openai.chat.completions.create({
-            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-            response_format: { type: "json_object" },
-            messages: [
-                {
-                    role: 'user',
-                    content: [
-                        {
-                            type: 'text',
-                            text: `You are a professional KYC (Know Your Customer) document verification system.
-Your job is to analyze the attached user identification documents and verify that the information is correct and belongs to the same person.
+        // Parallel Multi-Pass AI Verification
+        const [responseA, responseB] = await Promise.all([
+            // Pass A: Structured Extraction
+            openai.chat.completions.create({
+                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                response_format: { type: "json_object" },
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: `Extract the details from the attached user identity and driving license documents.
+Return ONLY a JSON object with:
+{
+  "extractedName": "Full name found on documents",
+  "extractedDob": "Date of birth found (Format: YYYY-MM-DD or DD/MM/YYYY)",
+  "extractedIdNumber": "National ID or Passport number",
+  "extractedLicenseNumber": "Driving License number",
+  "isLegible": true or false,
+  "unreadableReason": "Explanation if documents are unreadable or blurry, else empty string"
+}`
+                            },
+                            { type: 'image_url', image_url: { url: user.idCardFront } },
+                            { type: 'image_url', image_url: { url: user.idCardBack } },
+                            { type: 'image_url', image_url: { url: user.licenseFront } },
+                            { type: 'image_url', image_url: { url: user.licenseBack } }
+                        ]
+                    }
+                ]
+            }),
+            // Pass B: Detailed Compliance Audit
+            openai.chat.completions.create({
+                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                response_format: { type: "json_object" },
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: `You are a professional KYC document verification system.
+Your job is to analyze the attached user identification documents and verify that the information matches the profile details.
 
 USER PROFILE DETAILS TO CHECK:
 - Full Name: ${user.name}
 - Date of Birth: ${user.dob}
 - National ID / Passport Number: ${user.idNumber}
 - Driving License Number: ${user.licenseNumber}
-- Nationality: ${user.nationality || 'Not Selected'}
-- Gender: ${user.gender || 'Not Selected'}
-
-DOCUMENTS ATTACHED:
-1. ID Front Side: ${user.idCardFront}
-2. ID Back Side: ${user.idCardBack}
-3. License Front Side: ${user.licenseFront}
-4. License Back Side: ${user.licenseBack}
 
 Verify the following rules:
-1. Valid documents: Are these documents readable and actual ID/License images?
-2. Matching details: Does the name, DOB, ID number, and License number on the documents match the profile details? Allow minor spelling variations or transliteration differences, but reject major mismatches.
-3. Same person: Do all documents belong to the exact same person?
-4. Expiration: Are the documents currently expired? (Current Date is ${currentDateStr}).
+1. Valid documents: Are these readable and actual ID/License images?
+2. Same person: Do all documents belong to the exact same person?
+3. Expiration: Are the documents currently expired? (Current Date is ${currentDateStr}).
 
-Return your response ONLY as a JSON object with:
+Return ONLY a JSON object with:
 {
   "status": "verified" or "rejected",
-  "report": "A detailed analysis report in Markdown format, with sections for: Documents Readability, Detail Comparison, Expiration Checks, and Verification Summary. Be professional.",
+  "report": "A detailed audit compliance report in Markdown format, with sections for: Documents Readability, Detail Comparison, Expiration Checks, and Verification Summary. Be professional.",
   "error": "A brief explanation of why the verification failed (if status is 'rejected'), or empty string (if status is 'verified')."
 }`
-                        },
-                        { type: 'image_url', image_url: { url: user.idCardFront } },
-                        { type: 'image_url', image_url: { url: user.idCardBack } },
-                        { type: 'image_url', image_url: { url: user.licenseFront } },
-                        { type: 'image_url', image_url: { url: user.licenseBack } }
-                    ]
+                            },
+                            { type: 'image_url', image_url: { url: user.idCardFront } },
+                            { type: 'image_url', image_url: { url: user.idCardBack } },
+                            { type: 'image_url', image_url: { url: user.licenseFront } },
+                            { type: 'image_url', image_url: { url: user.licenseBack } }
+                        ]
+                    }
+                ]
+            })
+        ]);
+
+        const resultAJsonStr = responseA.choices[0].message.content;
+        const resultBJsonStr = responseB.choices[0].message.content;
+
+        console.log("AI Pass A Extraction:", resultAJsonStr);
+        console.log("AI Pass B Verification:", resultBJsonStr);
+
+        let resultA, resultB;
+        try { resultA = JSON.parse(resultAJsonStr); } catch (e) { resultA = { isLegible: false, unreadableReason: 'Failed parsing extraction response' }; }
+        try { resultB = JSON.parse(resultBJsonStr); } catch (e) { resultB = { status: 'rejected', error: 'Failed parsing verification response', report: resultBJsonStr }; }
+
+        let finalStatus = resultB.status === 'verified' ? 'verified' : 'rejected';
+        let finalError = resultB.error || '';
+        let finalReport = resultB.report || 'Verification report could not be generated.';
+
+        // Programmatic cross-check of Pass A's extracted values to prevent AI comparison failure
+        if (finalStatus === 'verified') {
+            if (!resultA.isLegible) {
+                finalStatus = 'rejected';
+                finalError = resultA.unreadableReason || 'Documents are unreadable or blurry.';
+            } else {
+                // helper to normalize numbers/strings
+                const normalize = s => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+                const normUserID = normalize(user.idNumber);
+                const normUserLicense = normalize(user.licenseNumber);
+                const normExtID = normalize(resultA.extractedIdNumber);
+                const normExtLicense = normalize(resultA.extractedLicenseNumber);
+
+                if (normExtID && normUserID !== normExtID) {
+                    finalStatus = 'rejected';
+                    finalError = `National ID number mismatch. Profile expects ${user.idNumber} but document shows ${resultA.extractedIdNumber}.`;
+                } else if (normExtLicense && normUserLicense !== normExtLicense) {
+                    finalStatus = 'rejected';
+                    finalError = `Driving license number mismatch. Profile expects ${user.licenseNumber} but document shows ${resultA.extractedLicenseNumber}.`;
                 }
-            ]
-        });
-
-        const resultJsonStr = response.choices[0].message.content;
-        console.log("AI Verification Output:", resultJsonStr);
-
-        let result;
-        try {
-            result = JSON.parse(resultJsonStr);
-        } catch (e) {
-            result = {
-                status: 'rejected',
-                report: resultJsonStr,
-                error: 'Failed to parse structured AI response.'
-            };
+            }
         }
 
-        const finalStatus = ['verified', 'rejected'].includes(result.status) ? result.status : 'rejected';
-        const finalReport = result.report || resultJsonStr;
-        const finalError = result.error || (finalStatus === 'rejected' ? 'AI verification checks failed.' : '');
+        const dateNow = new Date();
+        const actionText = finalStatus === 'verified' ? 'Verification Successful' : 'Verification Rejected';
+        
+        // Add to history log
+        const historyEntry = {
+            date: dateNow,
+            status: finalStatus,
+            action: actionText,
+            reason: finalStatus === 'verified' ? 'All checks passed.' : finalError
+        };
 
-        // Update database
         const updatedUser = await User.findByIdAndUpdate(_id, {
             verificationStatus: finalStatus,
             verificationReport: finalReport,
-            verificationError: finalError
+            verificationError: finalError,
+            verifiedAt: finalStatus === 'verified' ? dateNow : user.verifiedAt,
+            $push: { verificationHistory: historyEntry }
         }, { new: true });
+
+        // Trigger Mock Email notifier
+        await sendVerificationEmail(user.email, user.name, finalStatus, finalError);
 
         res.json({ 
             success: true, 
@@ -353,10 +466,17 @@ Return your response ONLY as a JSON object with:
 
     } catch (error) {
         console.error("Verification error:", error.message);
+        const errorEntry = {
+            date: new Date(),
+            status: 'rejected',
+            action: 'System Error',
+            reason: `Internal system error: ${error.message}`
+        };
         try {
             await User.findByIdAndUpdate(req.user._id, { 
                 verificationStatus: 'rejected', 
-                verificationError: `Internal verification error: ${error.message}`
+                verificationError: `Internal verification error: ${error.message}`,
+                $push: { verificationHistory: errorEntry }
             });
         } catch (e) {}
 

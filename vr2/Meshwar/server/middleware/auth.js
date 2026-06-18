@@ -23,6 +23,24 @@ export const protect = async (req, res, next) => {
                 user.subscriptionExpiryDate = null;
                 await user.save();
             }
+
+            // Check verification license expiry
+            if (user.verificationStatus === 'verified' && user.licenseExpiry && user.licenseExpiry !== 'Not Selected') {
+                const expiryDate = new Date(user.licenseExpiry);
+                if (!isNaN(expiryDate.getTime()) && expiryDate < new Date()) {
+                    user.verificationStatus = 'unverified';
+                    user.verificationError = 'Your driving license has expired.';
+                    user.verificationReport = `### License Expiration Check\n\n- **Status**: Expired\n- **License Expiry Date**: ${user.licenseExpiry}\n- **Action Taken**: Verification reset to unverified. Please upload your renewed driving license.`;
+                    user.verificationHistory.push({
+                        date: new Date(),
+                        status: 'unverified',
+                        action: 'System Auto-Reset',
+                        reason: 'Driving license expired'
+                    });
+                    await user.save();
+                }
+            }
+
             req.user = user;
         } else {
             req.user = null;

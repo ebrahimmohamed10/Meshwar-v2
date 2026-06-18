@@ -59,6 +59,62 @@ const ManageUsers = () => {
     }
   };
 
+  const handleApproveVerification = async (id) => {
+    try {
+      const response = await axios.put(`/api/admin/users/${id}/verify`, {}, {
+        headers: { Authorization: adminToken }
+      });
+      if (response.data.success) {
+        toast.success("User verification approved!");
+        setSelectedUser(response.data.user);
+        setUsers(users.map(u => u._id === id ? response.data.user : u));
+      } else {
+        toast.error(response.data.message || "Failed to approve verification");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to approve verification");
+    }
+  };
+
+  const handleRejectVerification = async (id) => {
+    const reason = window.prompt("Enter verification rejection reason:");
+    if (reason === null) return;
+    try {
+      const response = await axios.put(`/api/admin/users/${id}/reject`, { reason }, {
+        headers: { Authorization: adminToken }
+      });
+      if (response.data.success) {
+        toast.success("User verification rejected!");
+        setSelectedUser(response.data.user);
+        setUsers(users.map(u => u._id === id ? response.data.user : u));
+      } else {
+        toast.error(response.data.message || "Failed to reject verification");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to reject verification");
+    }
+  };
+
+  const handleUnlockVerification = async (id) => {
+    try {
+      const response = await axios.put(`/api/admin/users/${id}/unlock`, {}, {
+        headers: { Authorization: adminToken }
+      });
+      if (response.data.success) {
+        toast.success("User attempts unlocked!");
+        setSelectedUser(response.data.user);
+        setUsers(users.map(u => u._id === id ? response.data.user : u));
+      } else {
+        toast.error(response.data.message || "Failed to unlock verification");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to unlock verification");
+    }
+  };
+
   const openUserDetails = (user) => {
     setSelectedUser(user);
     setIsModalOpen(true);
@@ -323,6 +379,58 @@ const ManageUsers = () => {
                       </div>
                     ) : (
                       <p className="text-xs text-gray-400 italic">No AI verification report available for this user.</p>
+                    )}
+
+                    {/* Admin Actions for Verification */}
+                    <div className="mt-4 flex flex-wrap gap-2.5 pt-4 border-t border-gray-200/50">
+                      {selectedUser.verificationStatus !== 'verified' && (
+                        <button 
+                          onClick={() => handleApproveVerification(selectedUser._id)}
+                          className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/55 rounded-lg text-xs font-bold transition-all"
+                        >
+                          Approve Manually
+                        </button>
+                      )}
+                      {selectedUser.verificationStatus !== 'rejected' && (
+                        <button 
+                          onClick={() => handleRejectVerification(selectedUser._id)}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/55 rounded-lg text-xs font-bold transition-all"
+                        >
+                          Reject Manually
+                        </button>
+                      )}
+                      {selectedUser.verificationLocked && (
+                        <button 
+                          onClick={() => handleUnlockVerification(selectedUser._id)}
+                          className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/55 rounded-lg text-xs font-bold transition-all"
+                        >
+                          Unlock Attempts ({selectedUser.verificationAttempts || 0}/5)
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Render User Verification History */}
+                    {selectedUser.verificationHistory && selectedUser.verificationHistory.length > 0 && (
+                      <div className="mt-5 pt-4 border-t border-gray-200/50">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2.5 font-mono">Verification History Log</p>
+                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                          {selectedUser.verificationHistory.map((h, i) => (
+                            <div key={i} className="flex justify-between items-start p-2.5 bg-white rounded-lg border border-gray-150 text-[11px]">
+                              <div>
+                                <span className="font-bold text-gray-800">{h.action}</span>
+                                {h.reason && <p className="text-gray-500 text-[10px] mt-0.5">{h.reason}</p>}
+                              </div>
+                              <div className="text-right shrink-0 ml-4">
+                                <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase ${
+                                  h.status === 'verified' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                  h.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
+                                }`}>{h.status}</span>
+                                <p className="text-[9px] text-gray-400 mt-1">{new Date(h.date).toLocaleString()}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
 

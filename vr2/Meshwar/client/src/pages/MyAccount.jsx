@@ -7,7 +7,7 @@ import ReactMarkdown from 'react-markdown'
 
 const MyAccount = () => {
 
-    const { user, axios, fetchUser } = useAppContext()
+    const { user, setUser, axios, fetchUser } = useAppContext()
     const [isEdit, setIsEdit] = useState(false)
     const [image, setImage] = useState(false)
     const [idCardFront, setIdCardFront] = useState(false)
@@ -55,7 +55,38 @@ const MyAccount = () => {
         }
     }, [user])
 
+    useEffect(() => {
+        let intervalId;
+        if (user && user.verificationStatus === 'pending') {
+            intervalId = setInterval(() => {
+                fetchUser();
+            }, 3000);
+        }
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [user?.verificationStatus]);
+
     const updateProfileData = async () => {
+        // Optimistic update — reflect changes in UI instantly
+        const previousUser = { ...user };
+        const optimisticUser = {
+            ...user,
+            ...formData,
+            image: image ? URL.createObjectURL(image) : user.image,
+            idCardFront: idCardFront ? URL.createObjectURL(idCardFront) : user.idCardFront,
+            idCardBack: idCardBack ? URL.createObjectURL(idCardBack) : user.idCardBack,
+            licenseFront: licenseFront ? URL.createObjectURL(licenseFront) : user.licenseFront,
+            licenseBack: licenseBack ? URL.createObjectURL(licenseBack) : user.licenseBack,
+        };
+        setUser(optimisticUser);
+        setIsEdit(false);
+        setImage(false);
+        setIdCardFront(false);
+        setIdCardBack(false);
+        setLicenseFront(false);
+        setLicenseBack(false);
+
         try {
             const formDataToSubmit = new FormData();
             Object.keys(formData).forEach(key => {
@@ -72,17 +103,18 @@ const MyAccount = () => {
 
             if (data.success) {
                 toast.success(data.message);
+                // Sync real URLs from server (especially for uploaded images)
                 await fetchUser();
-                setIsEdit(false);
-                setImage(false);
-                setIdCardFront(false);
-                setIdCardBack(false);
-                setLicenseFront(false);
-                setLicenseBack(false);
             } else {
+                // Revert on failure
+                setUser(previousUser);
+                setIsEdit(true);
                 toast.error(data.message);
             }
         } catch (error) {
+            // Revert on failure
+            setUser(previousUser);
+            setIsEdit(true);
             toast.error(error.message);
         }
     }
@@ -169,7 +201,24 @@ const MyAccount = () => {
                                     <div>
                                         <h3 className='text-lg font-bold text-gray-900'>Verification Rejected</h3>
                                         <p className='text-rose-600 text-sm font-semibold mt-1'>{user.verificationError || 'Verification checks failed.'}</p>
-                                        <p className='text-gray-500 text-xs mt-0.5'>Please review your documents and update details before trying again.</p>
+                                        
+                                        {/* Guidance tip based on failure details */}
+                                        {user.verificationError && (
+                                            <div className="mt-3 p-3.5 bg-rose-50/40 border border-rose-100/50 rounded-2xl text-[11px] text-rose-700 leading-relaxed font-medium">
+                                                {user.verificationError.toLowerCase().includes('mismatch') ? (
+                                                    <p>💡 <strong>Tip:</strong> Double-check that your Full Name, DOB, National ID, and Driving License fields in your profile match the spelling and digits on your documents exactly.</p>
+                                                ) : user.verificationError.toLowerCase().includes('expire') ? (
+                                                    <p>💡 <strong>Tip:</strong> The system flagged that your documents are expired. Please upload renewed ID/License documents to get verified.</p>
+                                                ) : user.verificationError.toLowerCase().includes('blurry') || user.verificationError.toLowerCase().includes('readable') || user.verificationError.toLowerCase().includes('legible') ? (
+                                                    <p>💡 <strong>Tip:</strong> Take photos of your documents in a well-lit space. Ensure all details are clear and not obscured by shadows or camera glare.</p>
+                                                ) : user.verificationError.toLowerCase().includes('lock') ? (
+                                                    <p>💡 <strong>Tip:</strong> Verification is locked due to too many failed attempts. Please reach out to Support or Admin to unlock your verification status.</p>
+                                                ) : (
+                                                    <p>💡 <strong>Tip:</strong> Ensure all text on your uploaded documents is readable and matches the information you typed in your profile details.</p>
+                                                )}
+                                            </div>
+                                        )}
+                                        <p className='text-gray-500 text-xs mt-1.5'>Please review your documents and update details before trying again.</p>
                                     </div>
                                 </div>
                                 <div className='flex items-center gap-3'>
@@ -180,17 +229,23 @@ const MyAccount = () => {
                                     )}
                                     <button 
                                         onClick={handleVerifyProfile}
-                                        disabled={!isReadyForVerification} 
-                                        className={`text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-xl shadow-md transition-all cursor-pointer ${isReadyForVerification ? 'bg-primary text-white hover:bg-primary/95' : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'}`}
+                                        disabled={!isReadyForVerification || user.verificationLocked} 
+                                        className={`text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-xl shadow-md transition-all cursor-pointer ${isReadyForVerification && !user.verificationLocked ? 'bg-primary text-white hover:bg-primary/95' : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'}`}
                                     >
-                                        Retry Verification
+                                        {user.verificationLocked ? 'Verification Locked' : 'Retry Verification'}
                                     </button>
                                 </div>
                             </div>
-                            {!isReadyForVerification && (
+                            {!isReadyForVerification && !user.verificationLocked && (
                                 <div className='p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700 font-medium flex items-center gap-2'>
                                     <span className='w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse' />
                                     Please ensure all profile details are completed and all 4 documents are uploaded before retrying.
+                                </div>
+                            )}
+                            {user.verificationLocked && (
+                                <div className='p-4 bg-rose-50 border border-rose-100 rounded-xl text-xs text-rose-700 font-semibold flex items-center gap-2'>
+                                    <span className='w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse' />
+                                    You have exceeded the maximum of 5 attempts. Verification access is locked. Please contact support.
                                 </div>
                             )}
                         </div>
@@ -302,22 +357,49 @@ const MyAccount = () => {
                             >
                                 <div className='mt-8 pt-8 border-t border-gray-100'>
                                     <h4 className='text-xs font-black text-gray-400 uppercase tracking-widest mb-4'>AI Verification Report & Audit Logs</h4>
-                                    <div className='bg-gray-50 rounded-2xl border border-gray-200/50 p-6 md:p-8 overflow-y-auto max-h-[400px]'>
-                                        <ReactMarkdown
-                                            components={{
-                                                h1: ({node, ...props}) => <h1 className="text-lg font-bold text-gray-900 mt-4 mb-2 first:mt-0" {...props} />,
-                                                h2: ({node, ...props}) => <h2 className="text-md font-bold text-gray-800 mt-3 mb-1.5" {...props} />,
-                                                h3: ({node, ...props}) => <h3 className="text-sm font-bold text-gray-700 mt-2 mb-1" {...props} />,
-                                                p: ({node, ...props}) => <p className="text-sm text-gray-600 leading-relaxed mb-2" {...props} />,
-                                                ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 space-y-1 text-sm text-gray-600" {...props} />,
-                                                ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-sm text-gray-600" {...props} />,
-                                                li: ({node, ...props}) => <li className="text-sm text-gray-600" {...props} />,
-                                                strong: ({node, ...props}) => <strong className="font-bold text-gray-850" {...props} />,
-                                                code: ({node, ...props}) => <code className="bg-gray-200/60 text-rose-600 px-1 py-0.5 rounded text-xs font-mono" {...props} />
-                                            }}
-                                        >
-                                            {user.verificationReport}
-                                        </ReactMarkdown>
+                                    <div className='bg-gray-50 rounded-2xl border border-gray-200/50 p-6 md:p-8 overflow-y-auto max-h-[500px] space-y-6'>
+                                        <div>
+                                            <ReactMarkdown
+                                                components={{
+                                                    h1: ({node, ...props}) => <h1 className="text-lg font-bold text-gray-900 mt-4 mb-2 first:mt-0" {...props} />,
+                                                    h2: ({node, ...props}) => <h2 className="text-md font-bold text-gray-800 mt-3 mb-1.5" {...props} />,
+                                                    h3: ({node, ...props}) => <h3 className="text-sm font-bold text-gray-700 mt-2 mb-1" {...props} />,
+                                                    p: ({node, ...props}) => <p className="text-sm text-gray-600 leading-relaxed mb-2" {...props} />,
+                                                    ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 space-y-1 text-sm text-gray-600" {...props} />,
+                                                    ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-sm text-gray-600" {...props} />,
+                                                    li: ({node, ...props}) => <li className="text-sm text-gray-600" {...props} />,
+                                                    strong: ({node, ...props}) => <strong className="font-bold text-gray-850" {...props} />,
+                                                    code: ({node, ...props}) => <code className="bg-gray-200/60 text-rose-600 px-1 py-0.5 rounded text-xs font-mono" {...props} />
+                                                }}
+                                            >
+                                                {user.verificationReport}
+                                            </ReactMarkdown>
+                                        </div>
+
+                                        {/* Verification Attempts History logs */}
+                                        {user.verificationHistory && user.verificationHistory.length > 0 && (
+                                            <div className="pt-6 border-t border-gray-250">
+                                                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Verification Audit Trail</h5>
+                                                <div className="space-y-3">
+                                                    {user.verificationHistory.map((item, idx) => (
+                                                        <div key={idx} className="flex justify-between items-start text-xs p-3 bg-white rounded-xl border border-gray-200/60 shadow-sm">
+                                                            <div>
+                                                                <span className="font-bold text-gray-800">{item.action || 'Attempt Run'}</span>
+                                                                {item.reason && <p className="text-gray-500 mt-1">{item.reason}</p>}
+                                                            </div>
+                                                            <div className="text-right shrink-0 ml-4">
+                                                                <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase ${
+                                                                    item.status === 'verified' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                                                    item.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 
+                                                                    'bg-rose-50 text-rose-700 border border-rose-100'
+                                                                }`}>{item.status}</span>
+                                                                <p className="text-[10px] text-gray-400 mt-1.5">{new Date(item.date).toLocaleString()}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </motion.div>
@@ -386,7 +468,7 @@ const MyAccount = () => {
                                 <CleanField label="City" value={user.city} name="city" isEdit={isEdit} formData={formData} setFormData={setFormData} />
                                 <CleanField label="Zip Code" value={user.zipCode} name="zipCode" isEdit={isEdit} formData={formData} setFormData={setFormData} />
                             </div>
-                            <div className='md:col-span-2'>
+                            <div>
                                 <CleanField label="Residential Address" value={user.address} name="address" isEdit={isEdit} formData={formData} setFormData={setFormData} type="textarea" />
                             </div>
                         </div>
@@ -435,7 +517,7 @@ const CleanField = ({ label, value, name, isEdit, formData, setFormData, type = 
                 options ? (
                     <select value={formData[name]} onChange={e => setFormData(p => ({...p, [name]: e.target.value}))} className='w-full px-4 py-3 bg-transparent text-[15px] font-medium text-gray-800 outline-none cursor-pointer'>{options.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select>
                 ) : type === "textarea" ? (
-                    <textarea value={formData[name]} onChange={e => setFormData(p => ({...p, [name]: e.target.value}))} rows={2} className='w-full px-4 py-3 bg-transparent text-[15px] font-medium text-gray-800 outline-none resize-none' />
+                    <textarea value={formData[name]} onChange={e => setFormData(p => ({...p, [name]: e.target.value}))} rows={1} className='w-full px-4 py-3 bg-transparent text-[15px] font-medium text-gray-800 outline-none resize-none' />
                 ) : (
                     <input type={type} value={formData[name]} onChange={e => setFormData(p => ({...p, [name]: e.target.value}))} className='w-full px-4 py-3 bg-transparent text-[15px] font-medium text-gray-800 outline-none' />
                 )
@@ -448,28 +530,41 @@ const CleanField = ({ label, value, name, isEdit, formData, setFormData, type = 
     </div>
 )
 
-const CleanDoc = ({ label, id, image, setImage, current, isEdit }) => (
-    <div className='space-y-4'>
-        <label className='text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1'>{label}</label>
-        <div className='relative h-64 rounded-[2.5rem] overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center transition-all group'>
-            {image ? (
-                <img src={URL.createObjectURL(image)} alt="" className='w-full h-full object-cover' />
-            ) : current ? (
-                <img src={current} alt="" className='w-full h-full object-cover' />
-            ) : (
-                <div className='text-center text-gray-300 opacity-50'>
-                    <svg className='mx-auto mb-2' width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <p className='text-[9px] font-black uppercase tracking-widest'>Source Required</p>
-                </div>
-            )}
-            {isEdit && (
-                <label htmlFor={id} className='absolute inset-0 bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center backdrop-blur-sm'>
-                    <div className='bg-white px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl'>Update Asset</div>
-                    <input onChange={e => setImage(e.target.files[0])} type="file" id={id} hidden />
-                </label>
-            )}
+const CleanDoc = ({ label, id, image, setImage, current, isEdit }) => {
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Warn if file size is very low (<100KB) to ensure legibility
+        if (file.size < 100 * 1024) {
+            toast.error(`Low resolution warning on ${label}. Please ensure details are clearly legible.`, { duration: 5000 });
+        }
+        setImage(file);
+    };
+
+    return (
+        <div className='space-y-4'>
+            <label className='text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1'>{label}</label>
+            <div className='relative h-64 rounded-[2.5rem] overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center transition-all group'>
+                {image ? (
+                    <img src={URL.createObjectURL(image)} alt="" className='w-full h-full object-cover' />
+                ) : current ? (
+                    <img src={current} alt="" className='w-full h-full object-cover' />
+                ) : (
+                    <div className='text-center text-gray-300 opacity-50'>
+                        <svg className='mx-auto mb-2' width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <p className='text-[9px] font-black uppercase tracking-widest'>Source Required</p>
+                    </div>
+                )}
+                {isEdit && (
+                    <label htmlFor={id} className='absolute inset-0 bg-gray-900/50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center backdrop-blur-sm'>
+                        <div className='bg-white px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl'>Update Asset</div>
+                        <input onChange={handleFileChange} type="file" id={id} hidden />
+                    </label>
+                )}
+            </div>
         </div>
-    </div>
-)
+    )
+}
 
 export default MyAccount
